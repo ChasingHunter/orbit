@@ -91,7 +91,9 @@ It can't change anything in them either, until you tick "Orbit can change files 
 
 Orbit won't create or rename files to types that run when you open them (.exe, .bat, .ps1, .js, shortcuts and the like), and it only edits text files in place. Until one folder is writable, the model isn't even told these tools exist, so they cost no tokens.
 
-Orbit can also make Word, Excel, PowerPoint and PDF files ("turn this into a one-page PDF", "put these numbers in a spreadsheet with totals"). They go in its own files folder, never overwrite anything (a second report.docx becomes report (2).docx), and the answer shows the file with Open and Show in folder buttons. Spreadsheet formulas stay real formulas. Ask it to copy one into a writable folder if you want it somewhere else.
+Orbit can also make Word, Excel, PowerPoint and PDF files ("turn this into a one-page PDF", "put these numbers in a spreadsheet with totals"). They never overwrite anything (a second report.docx becomes report (2).docx), and the answer shows the file with Open, Save as…, Keep and Show in folder buttons.
+
+Like files Claude generates, the ones Orbit makes while you chat are temporary until you want them. Save as… copies one wherever you like (Downloads by default), and Keep moves it into Orbit's files folder for good. Temporary files go to the Recycle Bin once nobody has opened them for 14 days, 3 days after you saved a copy elsewhere, or when there are more than 2 GB of them (least recently used first, nothing under a day old). Files a workflow makes are always kept, since workflows often come back to them. Spreadsheet formulas stay real formulas. Ask it to copy one into a writable folder if you want it somewhere else.
 
 ## Running code
 
@@ -162,7 +164,7 @@ Your folders are read-only unless you say otherwise, and workflow code runs in a
 
 ## Disk space
 
-Logs, backups and the undo history would grow forever if nothing cleaned them up, so Orbit does it once a day: tool logs are kept 90 days (about 70 MB at most), workflow run history 30 days and 3,000 runs, backups of changed files 30 days and 2 GB (or a tenth of your free space, if that's less), and attachment copies 30 days and 1 GB. Your chats, memories and the files Orbit made for you are never deleted automatically; you can set chats to expire in `settings.json` (`storage.chatDays`). Orbit also stops saving backups, attachments and new files when that would leave less than 1 GB free, and warns you when the disk drops under 5 GB. The Usage page shows what each part takes and has a "Clean up now" button.
+Logs, backups and the undo history would grow forever if nothing cleaned them up, so Orbit does it once a day: tool logs are kept 90 days (about 70 MB at most), workflow run history 30 days and 3,000 runs, backups of changed files 30 days and 2 GB (or a tenth of your free space, if that's less), and attachment copies 30 days and 1 GB. Your chats, memories, files you kept and files workflows made are never deleted automatically (temporary chat files are, as described above); you can set chats to expire in `settings.json` (`storage.chatDays`). Orbit also stops saving backups, attachments and new files when that would leave less than 1 GB free, and warns you when the disk drops under 5 GB. The Usage page shows what each part takes and has a "Clean up now" button.
 
 ## How many tokens it uses
 

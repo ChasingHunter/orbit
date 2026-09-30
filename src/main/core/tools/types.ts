@@ -6,6 +6,8 @@ export type ToolContext = {
   signal: AbortSignal
   /** Context attached to the current conversation turn (selection, screenshots, window). */
   context: ContextItem[]
+  /** chat: someone asked just now (files made are temporary). workflow: files are kept. */
+  source: 'chat' | 'workflow'
 }
 
 /**

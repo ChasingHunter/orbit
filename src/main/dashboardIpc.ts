@@ -210,8 +210,8 @@ export function registerDashboardIpc(): void {
   })
 
   ipcMain.handle('dash:storage', () => storageReport())
-  ipcMain.handle('dash:cleanup', () => {
-    runCleanup()
+  ipcMain.handle('dash:cleanup', async () => {
+    await runCleanup()
     return storageReport()
   })
   ipcMain.handle('dash:checks', () => runChecks())

@@ -34,6 +34,7 @@ export function checked(path: string): string {
   try {
     real = realpathSync(guess)
   } catch {
+    if (/[\\/]Temporary[\\/]/i.test(guess)) throw new Error(`${path} was a temporary file and has been cleaned up (it's in the Recycle Bin). Make it again if needed.`)
     throw new Error(`Not found: ${path}`)
   }
   const inside = readable.some((r) => {

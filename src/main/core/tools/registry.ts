@@ -35,6 +35,8 @@ type CallOptions = {
   preApproved?: boolean
   /** Prefix for the approval card title, e.g. the workflow name. */
   origin?: string
+  /** Who's asking; defaults to workflow (files it makes are kept). */
+  source?: ToolContext['source']
 }
 
 /** Validation, policy, approval and audit around a single tool call. */
@@ -72,7 +74,7 @@ async function invoke(tool: OrbitTool, rawInput: unknown, opts: CallOptions): Pr
   }
 
   try {
-    let output = await tool.run(input, { signal: opts.signal, context: opts.context })
+    let output = await tool.run(input, { signal: opts.signal, context: opts.context, source: opts.source ?? 'workflow' })
     if (output.length > MAX_OUTPUT) output = output.slice(0, MAX_OUTPUT) + '\n…[truncated]'
     audit({ tool: tool.name, input, decision, ok: true, output })
     return { output, isError: false }
@@ -101,7 +103,8 @@ export function riskOf(name: string): Risk | undefined {
 export function runnableTools(
   getContext: () => ToolContext['context'],
   exclude: string[] = [],
-  only?: string[]
+  only?: string[],
+  source: ToolContext['source'] = 'chat'
 ): RunnableTool[] {
   return allTools()
     .filter((t) => policyFor(t) !== 'never' && (t.available?.() ?? true) && !exclude.includes(t.name) && (!only || only.map(normalizeToolName).includes(t.name)))
@@ -109,6 +112,6 @@ export function runnableTools(
       name: tool.name,
       description: tool.description,
       input: tool.input,
-      call: (rawInput, signal) => invoke(tool, rawInput, { signal, context: getContext() })
+      call: (rawInput, signal) => invoke(tool, rawInput, { signal, context: getContext(), source })
     }))
 }

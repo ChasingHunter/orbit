@@ -6,8 +6,7 @@ import { app } from 'electron'
 import { settings } from '../../../settingsStore'
 import { defineTool } from '../types'
 import { checked } from './folders'
-import { inFiles } from './files'
-import { saveOwnBinary } from '../../changes'
+import { saveMade } from './files'
 import { runPython } from '../../../python/sandbox'
 
 // Running code. Python runs in a sandbox (see python/sandbox.ts) and can't touch the user's
@@ -35,7 +34,7 @@ export const runPythonTool = defineTool({
   risk: 'local',
   describe: ({ description }) => description,
   preview: ({ code, files }) => `${files?.length ? `Files: ${files.map((f) => basename(f)).join(', ')}\n\n` : ''}${code.length > 1500 ? `${code.slice(0, 1500)}…` : code}`,
-  run: async ({ code, files = [] }, { signal }) => {
+  run: async ({ code, files = [] }, { signal, source }) => {
     const inputs: { name: string; data: Buffer }[] = []
     let total = 0
     for (const f of files) {
@@ -48,12 +47,12 @@ export const runPythonTool = defineTool({
     }
     const { timeoutSec, memoryMb } = settings.current.tools.python
     const r = await runPython({ code, files: inputs, timeoutMs: timeoutSec * 1000, memoryMb }, signal)
-    const saved = r.files.filter((f) => f.data.length <= MAX_IN).map((f) => saveOwnBinary(inFiles(f.name.replace(/\//g, '-')), f.data))
+    const saved = r.files.filter((f) => f.data.length <= MAX_IN).map((f) => saveMade(f.name.replace(/\//g, '-'), f.data, source))
     const parts = [
       r.output.trim() && `Output:\n${clipOutput(r.output.trim())}`,
       r.result && `Result: ${clipOutput(r.result)}`,
       r.error && `Error:\n${r.error}`,
-      ...saved.map((p) => `Saved ${p}`)
+      ...saved
     ].filter(Boolean)
     if (r.error && !r.output.trim() && !saved.length) throw new Error(r.error)
     return parts.join('\n\n') || '(no output; print() the result)'

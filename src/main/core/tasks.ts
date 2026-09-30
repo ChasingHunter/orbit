@@ -44,7 +44,7 @@ export async function runAgent(
   // A purpose (quick/chat/research) maps to settings; anything else is a provider:model ref.
   const ref = purpose in settings.current.models ? settings.current.models[purpose as Purpose] : purpose
   const { runner, model } = resolveModel(ref)
-  const tools = runnableTools(() => [], AGENT_TOOLS, opts.tools)
+  const tools = runnableTools(() => [], AGENT_TOOLS, opts.tools, opts.source === 'workflow' || opts.source === 'trigger' ? 'workflow' : 'chat')
   const session = runner.createSession({ system: opts.system ?? SUBAGENT_SYSTEM, model, tools })
   let text = ''
   const errors: string[] = []

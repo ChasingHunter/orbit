@@ -11,6 +11,7 @@ import { pruneJournal } from './journal'
 import { pruneSnapshots, snapshotBytes } from './userFiles'
 import { pruneAttachments } from './attachments'
 import { pythonCacheDir } from '../python/sandbox'
+import { sweepTemporary, tempDir, TEMP_DAYS } from './madeFiles'
 
 // Keeps Orbit's own records from growing forever. Runs a minute after start and then daily.
 // It only removes Orbit's logs, backups and caches, by age and size. Your chats (unless you set a
@@ -31,7 +32,7 @@ function dbFreed(fn: () => void): number {
   return Math.max(0, (before - (pages() - free())) * size)
 }
 
-export function runCleanup(): CleanupReport {
+export async function runCleanup(): Promise<CleanupReport> {
   const s = settings.current
   const details: Record<string, number> = {}
   const step = (name: string, fn: () => number): void => {
@@ -66,6 +67,11 @@ export function runCleanup(): CleanupReport {
   step('undo history', () => dbFreed(() => pruneJournal(s.files.snapshotDays)))
   step('backups', () => pruneSnapshots(freeBytes()))
   step('attachments', () => pruneAttachments(s.storage.attachmentsMaxMb))
+  try {
+    details['temporary files'] = await sweepTemporary()
+  } catch (err) {
+    logInfo('cleanup: temporary files failed', err)
+  }
   step('usage records', () => dbFreed(() => d.prepare('DELETE FROM usage WHERE at < ?').run(days(400))))
   if (s.storage.chatDays > 0) {
     step('old chats', () =>
@@ -145,7 +151,8 @@ export function storageReport(): { items: StorageItem[]; total: number; free: nu
     { id: 'logs', label: 'Logs', bytes: dirSize(logs), limit: `about 70 MB at most, ${s.storage.logDays} days` },
     { id: 'backups', label: 'Backups of changed files', bytes: snapshotBytes(), limit: `${s.files.snapshotDays} days, ${(s.files.snapshotMaxMb / 1024).toFixed(1)} GB at most` },
     { id: 'attachments', label: 'Attachment copies', bytes: dirSize(paths.attachments), limit: `30 days, ${(s.storage.attachmentsMaxMb / 1024).toFixed(1)} GB at most` },
-    { id: 'files', label: 'Files Orbit made for you', bytes: dirSize(paths.files), limit: 'yours, never deleted' },
+    { id: 'temporary', label: 'Temporary files from chats', bytes: dirSize(tempDir()), limit: `to the Recycle Bin after ${TEMP_DAYS} days unused, 2 GB at most` },
+    { id: 'files', label: 'Files you kept, and workflow files', bytes: dirSize(paths.files) - dirSize(tempDir()), limit: 'yours, never deleted' },
     { id: 'models', label: 'Speech model and Python packages', bytes: dirSize(paths.models), limit: 'fixed size' }
   ]
   return { items, total: items.reduce((t, i) => t + i.bytes, 0), free: freeBytes(), last }

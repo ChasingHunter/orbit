@@ -8,6 +8,9 @@ export type ContextItem =
   | { kind: 'window'; id: string; app: string; title: string }
   | { kind: 'url'; id: string; url: string }
 
+/** A file Orbit made: temporary (cleaned up unless kept), kept, or already cleaned up. */
+export type MadeFileState = { state: 'temporary' | 'kept' | 'gone'; daysLeft?: number; savedTo?: string }
+
 export type ImageInput = { mediaType: 'image/png' | 'image/jpeg'; base64: string }
 
 /** Provider-neutral stream events emitted by every AgentRunner. */
@@ -82,8 +85,12 @@ export interface OrbitApi {
   attachData(name: string, data: Uint8Array): Promise<{ items: ContextItem[]; errors: string[] }>
   /** Keeps the bar open while a file picker is up (it would hide on blur otherwise). */
   keepOpen(on: boolean): void
-  /** Opens, or shows in Explorer, a file Orbit made (only inside its files folder). */
-  openFile(path: string, how: 'open' | 'reveal'): void
+  /**
+   * Something done to a file Orbit made (only inside its files folder): open it, show it in
+   * Explorer, save a copy where you pick, or keep it for good. Returns its path and state after.
+   */
+  fileAction(path: string, action: 'open' | 'reveal' | 'save' | 'keep'): Promise<{ path: string; state: MadeFileState }>
+  fileState(path: string): Promise<MadeFileState>
   /** Path of a dropped File (Electron removed File.path). */
   pathForFile(file: File): string
   resize(height: number): void

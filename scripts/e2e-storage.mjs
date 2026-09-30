@@ -132,7 +132,7 @@ for (let i = 0; i < 20 && !dash; i++) {
   if (!dash) await bar.waitForTimeout(250)
 }
 await dash.waitForSelector('text=Storage')
-check('Storage card lists each kind of data', (await dash.locator('[data-storage]').count()) === 6)
+check('Storage card lists each kind of data', (await dash.locator('[data-storage]').count()) === 7)
 await dash.click('button:has-text("Clean up now")')
 await dash.waitForSelector('text=Last cleanup')
 check('Clean up now runs and reports', await dash.locator('text=Last cleanup').isVisible())

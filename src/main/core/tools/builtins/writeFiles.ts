@@ -4,6 +4,7 @@ import { basename, dirname, extname, join, relative } from 'node:path'
 import { defineTool } from '../types'
 import { checked } from './folders'
 import { TEXT_TYPES } from '../../extract'
+import { markSaved } from '../../madeFiles'
 import { copyIn, createText, editText, move, recordFileOps, remove, writableFolders, writablePath, type FileOp } from '../../userFiles'
 
 // Changing files in the user's own folders. Only offered to the model once a folder is marked
@@ -178,6 +179,7 @@ export const copyFile = defineTool({
     const src = checked(from)
     const dest = moveTarget(src, to, writableFolders()[0])
     recordFileOps(`Copied ${basename(src)} to ${show(dirname(dest))}`, [copyIn(src, dest)])
+    markSaved(src, dest)
     return `Copied to ${dest}`
   }
 })

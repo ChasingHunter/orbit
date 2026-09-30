@@ -6,6 +6,7 @@ import { defineTool } from '../types'
 import { saveOwnBinary, saveOwnFile } from '../../changes'
 import { makeDocx, makePdf, makePptx, makeXlsx } from '../../office'
 import { extractText, OFFICE_TYPES } from '../../extract'
+import { inTemp, TEMP_DAYS, trackMade } from '../../madeFiles'
 
 /** Resolves a name inside Orbit's files folder and refuses anything that escapes it. */
 export function inFiles(name: string): string {
@@ -67,7 +68,7 @@ export const makeFile = defineTool({
     slides: z.array(z.object({ title: z.string(), bullets: z.array(z.string()).optional(), notes: z.string().optional() })).optional()
   },
   risk: 'local', // a new file in Orbit's own folder; never overwrites
-  run: async ({ name, format, title, markdown, sheets, slides }) => {
+  run: async ({ name, format, title, markdown, sheets, slides }, { source }) => {
     let data: Buffer
     if (format === 'docx' || format === 'pdf') {
       if (!markdown?.trim()) throw new Error(`markdown is required for ${format}`)
@@ -80,7 +81,17 @@ export const makeFile = defineTool({
       data = await makePptx(slides, title)
     }
     const base = name.replace(/\.(docx|pdf|xlsx|pptx)$/i, '').replace(/[<>:"/\\|?*\x00-\x1f]/g, '-').trim() || 'document'
-    const saved = saveOwnBinary(inFiles(`${base}.${format}`), data)
-    return `Saved ${saved}`
+    return saveMade(`${base}.${format}`, data, source)
   }
 })
+
+/**
+ * Files made while chatting are temporary until the user keeps or saves them (see madeFiles.ts);
+ * workflow files go straight to the files folder.
+ */
+export function saveMade(name: string, data: Buffer, source: 'chat' | 'workflow'): string {
+  if (source === 'workflow') return `Saved ${saveOwnBinary(inFiles(name), data)}`
+  const saved = saveOwnBinary(inTemp(name), data)
+  trackMade(saved)
+  return `Saved ${saved}\n(Temporary: the user can keep it or save a copy from the chat; otherwise it's cleaned up after ${TEMP_DAYS} days unused.)`
+}

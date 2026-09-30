@@ -73,11 +73,12 @@ await app.evaluate(() => globalThis.__orbit.onBarHotkey())
 await bar.fill('textarea', 'Make me a spreadsheet called fruits with apples 3, pears 4 and plums 5, and a total row that adds them up with a formula.')
 await bar.keyboard.press('Enter')
 await bar.waitForSelector('[data-state="done"]', { timeout: 120_000 })
-const made = existsSync(join(files, 'fruits.xlsx'))
+const fruits = [join(files, 'Temporary', 'fruits.xlsx'), join(files, 'fruits.xlsx')].find((p) => existsSync(p))
+const made = !!fruits
 let formula = ''
 if (made) {
   const w = new ExcelJS.Workbook()
-  await w.xlsx.readFile(join(files, 'fruits.xlsx'))
+  await w.xlsx.readFile(fruits)
   w.eachSheet((s) => s.eachRow((row) => row.eachCell((c) => (formula ||= c.formula ?? ''))))
 }
 check('the model makes the spreadsheet with a working formula', made && /^SUM\(B2:B4\)$/i.test(formula), formula || 'no file')

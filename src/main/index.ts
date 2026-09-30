@@ -1,8 +1,8 @@
-import { app, clipboard, globalShortcut, ipcMain, Notification, shell } from 'electron'
+import { app, clipboard, globalShortcut, ipcMain, Notification, shell, dialog } from 'electron'
 import { randomUUID } from 'node:crypto'
 import type { ContextItem } from '@shared/types'
 import type { DashPage } from '@shared/dash'
-import { join, relative, resolve } from 'node:path'
+import { basename, join, relative, resolve } from 'node:path'
 import { existsSync } from 'node:fs'
 import { dataDir, ensureDataDirs, paths } from './paths'
 import { installLogging, logInfo } from './log'
@@ -35,6 +35,7 @@ import { browserUrl, startBrowserUrlHelper, stopBrowserUrlHelper } from './os/br
 import { registerDashboardIpc, setVoiceInstaller } from './dashboardIpc'
 import { attachData, attachPaths } from './core/attachments'
 import { runCleanup, startHousekeeping, storageReport } from './core/housekeeping'
+import * as made from './core/madeFiles'
 import { registerPythonScheme } from './python/sandbox'
 import { modelChoices } from './runners/choices'
 import { claudeStatus, runChecks } from './system/health'
@@ -279,12 +280,30 @@ function registerIpc(): void {
   ipcMain.handle('bar:attach', (_e, files: string[]) => attachPaths(files))
   ipcMain.handle('bar:attach-data', (_e, name: string, data: Uint8Array) => attachData(name, data))
   ipcMain.on('bar:keep-open', (_e, on: boolean) => setBarKeepOpen(on))
-  ipcMain.on('bar:open-file', (_e, path: string, how: 'open' | 'reveal') => {
-    // Only Orbit's own output: opening arbitrary paths from the renderer could run things.
+  // Only Orbit's own output: opening arbitrary paths from the renderer could run things.
+  const ownFile = (path: string): string | undefined => {
     const full = resolve(path)
-    if (relative(paths.files, full).startsWith('..') || !existsSync(full)) return
-    if (how === 'reveal') shell.showItemInFolder(full)
-    else void shell.openPath(full)
+    return relative(paths.files, full).startsWith('..') ? undefined : full
+  }
+  ipcMain.handle('bar:file-state', (_e, path: string) => (ownFile(path) ? made.stateOf(ownFile(path)!) : { state: 'gone' }))
+  ipcMain.handle('bar:file-action', async (_e, path: string, action: 'open' | 'reveal' | 'save' | 'keep') => {
+    let full = ownFile(path)
+    if (!full || !existsSync(full)) return { path, state: { state: 'gone' } }
+    if (action === 'open') {
+      made.markOpened(full)
+      void shell.openPath(full)
+    } else if (action === 'reveal') shell.showItemInFolder(full)
+    else if (action === 'keep') full = made.keep(full)
+    else if (action === 'save') {
+      setBarKeepOpen(true)
+      try {
+        const r = await dialog.showSaveDialog(bar(), { defaultPath: join(app.getPath('downloads'), basename(full)) })
+        if (!r.canceled && r.filePath) made.saveCopy(full, r.filePath)
+      } finally {
+        setBarKeepOpen(false)
+      }
+    }
+    return { path: full, state: made.stateOf(full) }
   })
   ipcMain.on('bar:resize', (_e, h: number) => resizeBar(h))
   ipcMain.on('bar:dashboard', (_e, page?: DashPage) => {
@@ -351,7 +370,8 @@ app.whenReady().then(() => {
     // Test hook for scripts/e2e.ts; never set in normal runs.
     Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, runChecks, speaker, recentChanges, undoChange, runCleanup, storageReport,
       measureTools: () => runnableTools(() => []).map((t) => ({ name: t.name, chars: t.description.length + JSON.stringify(z.toJSONSchema(z.object(t.input))).length })),
-      callTool: (name: string, input: unknown) => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [] }) } })
+      made,
+      callTool: (name: string, input: unknown, source?: 'chat' | 'workflow') => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [], source }) } })
     return
   }
   startSelectionHook()

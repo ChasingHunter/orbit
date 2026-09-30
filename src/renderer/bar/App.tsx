@@ -30,7 +30,7 @@ import {
   X,
   type LucideIcon
 } from 'lucide-react'
-import type { ApprovalRequest, BarEvent, ContextItem } from '@shared/types'
+import type { ApprovalRequest, BarEvent, ContextItem, MadeFileState } from '@shared/types'
 
 type QuickAction = Extract<BarEvent, { type: 'open' }>['quickActions'][number]
 type Question = Extract<BarEvent, { type: 'question' }>['question']
@@ -642,18 +642,50 @@ function Chip({ item, onRemove }: { item: ContextItem; onRemove: () => void }): 
 
 const MAKES_FILES = new Set(['make_file', 'run_python'])
 
-function MadeFile({ path }: { path: string }): React.JSX.Element {
-  const name = path.split(/[\/]/).pop() ?? path
+function MadeFile({ path: initial }: { path: string }): React.JSX.Element {
+  const [path, setPath] = useState(initial)
+  const [info, setInfo] = useState<MadeFileState | null>(null)
+  useEffect(() => void window.orbit.fileState(initial).then(setInfo), [initial])
+  const name = path.split(/[\\/]/).pop() ?? path
+  const act = (action: 'open' | 'reveal' | 'save' | 'keep'): void =>
+    void window.orbit.fileAction(path, action).then((r) => {
+      setPath(r.path)
+      setInfo(r.state)
+    })
+  const gone = info?.state === 'gone'
+  const note = !info
+    ? ''
+    : gone
+      ? 'cleaned up'
+      : info.state === 'kept'
+        ? 'kept'
+        : info.savedTo
+          ? `saved to ${info.savedTo.split(/[\\/]/).slice(-2, -1)[0] ?? 'your PC'}`
+          : `temporary, ${info.daysLeft} day${info.daysLeft === 1 ? '' : 's'} left`
+  const btn = 'rounded px-1.5 py-0.5 text-zinc-400 hover:bg-white/10 hover:text-zinc-100'
   return (
-    <span className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] py-1 pr-1 pl-2 text-xs text-zinc-200">
-      <FileText size={13} className="shrink-0 text-violet-300" />
-      <span className="max-w-[260px] truncate">{name}</span>
-      <button onClick={() => window.orbit.openFile(path, 'open')} className="rounded px-1.5 py-0.5 text-zinc-400 hover:bg-white/10 hover:text-zinc-100">
-        Open
-      </button>
-      <button onClick={() => window.orbit.openFile(path, 'reveal')} className="rounded px-1.5 py-0.5 text-zinc-400 hover:bg-white/10 hover:text-zinc-100">
-        Show in folder
-      </button>
+    <span className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] py-1 pr-1 pl-2 text-xs text-zinc-200" data-made-file={info?.state}>
+      <FileText size={13} className={`shrink-0 ${gone ? 'text-zinc-600' : 'text-violet-300'}`} />
+      <span className={`max-w-[220px] truncate ${gone ? 'text-zinc-500 line-through' : ''}`}>{name}</span>
+      {note && <span className="text-zinc-500">{note}</span>}
+      {!gone && (
+        <>
+          <button onClick={() => act('open')} className={btn}>
+            Open
+          </button>
+          <button onClick={() => act('save')} className={btn} title="Save a copy somewhere on your PC">
+            Save as…
+          </button>
+          {info?.state === 'temporary' && (
+            <button onClick={() => act('keep')} className={btn} title="Move it to Orbit's files folder so it's never cleaned up">
+              Keep
+            </button>
+          )}
+          <button onClick={() => act('reveal')} className={btn}>
+            Show in folder
+          </button>
+        </>
+      )}
     </span>
   )
 }
