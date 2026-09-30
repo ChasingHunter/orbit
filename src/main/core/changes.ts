@@ -1,5 +1,5 @@
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs'
-import { dirname, relative } from 'node:path'
+import { basename, dirname, extname, join, relative } from 'node:path'
 import { paths } from '../paths'
 import { addMemory, deleteMemory, getMemory, updateMemory, type Memory, type MemoryKind } from './memory'
 import { scheduler, type Schedule } from './scheduler'
@@ -14,6 +14,16 @@ export function saveOwnFile(path: string, content: string, source = 'Orbit'): vo
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, content)
   recordChange(`${previous === null ? 'Created' : 'Overwrote'} ${relative(paths.files, path)}`, { kind: 'file', path, previous }, source)
+}
+
+/** Saves a binary file Orbit made. Never overwrites: "report.docx" becomes "report (2).docx". Returns the path used. */
+export function saveOwnBinary(path: string, data: Buffer, source = 'Orbit'): string {
+  let target = path
+  for (let n = 2; existsSync(target); n++) target = join(dirname(path), `${basename(path, extname(path))} (${n})${extname(path)}`)
+  mkdirSync(dirname(target), { recursive: true })
+  writeFileSync(target, data)
+  recordChange(`Created ${relative(paths.files, target)}`, { kind: 'file', path: target, previous: null }, source)
+  return target
 }
 
 export function addMemoryTracked(text: string, kind: MemoryKind = 'note', isPrivate = false, source = 'Orbit'): Memory {

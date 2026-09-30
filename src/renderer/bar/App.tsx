@@ -640,6 +640,22 @@ function Chip({ item, onRemove }: { item: ContextItem; onRemove: () => void }): 
   )
 }
 
+function MadeFile({ path }: { path: string }): React.JSX.Element {
+  const name = path.split(/[\/]/).pop() ?? path
+  return (
+    <span className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] py-1 pr-1 pl-2 text-xs text-zinc-200">
+      <FileText size={13} className="shrink-0 text-violet-300" />
+      <span className="max-w-[260px] truncate">{name}</span>
+      <button onClick={() => window.orbit.openFile(path, 'open')} className="rounded px-1.5 py-0.5 text-zinc-400 hover:bg-white/10 hover:text-zinc-100">
+        Open
+      </button>
+      <button onClick={() => window.orbit.openFile(path, 'reveal')} className="rounded px-1.5 py-0.5 text-zinc-400 hover:bg-white/10 hover:text-zinc-100">
+        Show in folder
+      </button>
+    </span>
+  )
+}
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
@@ -725,6 +741,16 @@ function EntryView({ entry, onRetry, onEdit }: { entry: Entry; onRetry?: () => v
               </div>
             )
           })}
+        </div>
+      )}
+      {a.tools.some((t) => t.name === 'make_file' && t.output && !t.isError) && (
+        <div className="flex flex-wrap gap-1.5">
+          {a.tools
+            .filter((t) => t.name === 'make_file' && !t.isError)
+            .flatMap((t) => [t.output?.match(/^Saved (.+)$/m)?.[1]].filter((p): p is string => !!p))
+            .map((p) => (
+              <MadeFile key={p} path={p} />
+            ))}
         </div>
       )}
       {a.text ? (

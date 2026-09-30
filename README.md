@@ -91,6 +91,8 @@ It can't change anything in them either, until you tick "Orbit can change files 
 
 Orbit won't create or rename files to types that run when you open them (.exe, .bat, .ps1, .js, shortcuts and the like), and it only edits text files in place. Until one folder is writable, the model isn't even told these tools exist, so they cost no tokens.
 
+Orbit can also make Word, Excel, PowerPoint and PDF files ("turn this into a one-page PDF", "put these numbers in a spreadsheet with totals"). They go in its own files folder, never overwrite anything (a second report.docx becomes report (2).docx), and the answer shows the file with Open and Show in folder buttons. Spreadsheet formulas stay real formulas. Ask it to copy one into a writable folder if you want it somewhere else.
+
 ## Reminders and workflows
 
 "Remind me in 30 minutes to stretch" or "remind me every weekday at 9 to check the deploy" sets a desktop notification. It works offline.

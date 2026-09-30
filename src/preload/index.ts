@@ -29,6 +29,7 @@ const api: OrbitApi = {
   attachPaths: (paths) => ipcRenderer.invoke('bar:attach', paths),
   attachData: (name, data) => ipcRenderer.invoke('bar:attach-data', name, data),
   keepOpen: (on) => ipcRenderer.send('bar:keep-open', on),
+  openFile: (path, how) => ipcRenderer.send('bar:open-file', path, how),
   pathForFile: (file) => webUtils.getPathForFile(file),
   resize: (height) => ipcRenderer.send('bar:resize', height),
   openDashboard: (page) => ipcRenderer.send('bar:dashboard', page),

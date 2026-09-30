@@ -82,6 +82,8 @@ export interface OrbitApi {
   attachData(name: string, data: Uint8Array): Promise<{ items: ContextItem[]; errors: string[] }>
   /** Keeps the bar open while a file picker is up (it would hide on blur otherwise). */
   keepOpen(on: boolean): void
+  /** Opens, or shows in Explorer, a file Orbit made (only inside its files folder). */
+  openFile(path: string, how: 'open' | 'reveal'): void
   /** Path of a dropped File (Electron removed File.path). */
   pathForFile(file: File): string
   resize(height: number): void

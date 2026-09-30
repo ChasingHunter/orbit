@@ -1,9 +1,10 @@
-import { app, clipboard, globalShortcut, ipcMain, Notification } from 'electron'
+import { app, clipboard, globalShortcut, ipcMain, Notification, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
 import type { ContextItem } from '@shared/types'
 import type { DashPage } from '@shared/dash'
-import { join } from 'node:path'
-import { dataDir, ensureDataDirs } from './paths'
+import { join, relative, resolve } from 'node:path'
+import { existsSync } from 'node:fs'
+import { dataDir, ensureDataDirs, paths } from './paths'
 import { installLogging, logInfo } from './log'
 import { settings } from './settingsStore'
 import { setSecret } from './secrets'
@@ -276,6 +277,13 @@ function registerIpc(): void {
   ipcMain.handle('bar:attach', (_e, files: string[]) => attachPaths(files))
   ipcMain.handle('bar:attach-data', (_e, name: string, data: Uint8Array) => attachData(name, data))
   ipcMain.on('bar:keep-open', (_e, on: boolean) => setBarKeepOpen(on))
+  ipcMain.on('bar:open-file', (_e, path: string, how: 'open' | 'reveal') => {
+    // Only Orbit's own output: opening arbitrary paths from the renderer could run things.
+    const full = resolve(path)
+    if (relative(paths.files, full).startsWith('..') || !existsSync(full)) return
+    if (how === 'reveal') shell.showItemInFolder(full)
+    else void shell.openPath(full)
+  })
   ipcMain.on('bar:resize', (_e, h: number) => resizeBar(h))
   ipcMain.on('bar:dashboard', (_e, page?: DashPage) => {
     hideBar()
