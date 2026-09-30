@@ -1,6 +1,6 @@
 {
   "name": "orbit",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Open-source, provider-agnostic desktop assistant for Windows",
   "main": "./out/main/index.js",
   "license": "MIT",

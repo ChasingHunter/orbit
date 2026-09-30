@@ -2,6 +2,15 @@ import { Menu, Tray, nativeImage, shell } from 'electron'
 import { dataDir, paths } from '../paths'
 
 let tray: Tray | undefined
+let actions: TrayActions | undefined
+let update: { version: string; install: () => void } | undefined
+
+type TrayActions = {
+  openBar: () => void
+  screenshot: () => void
+  dashboard: () => void
+  quit: () => void
+}
 
 /** 16x16 ring icon drawn in code, so there is no binary asset to maintain. */
 function icon(): Electron.NativeImage {
@@ -21,25 +30,34 @@ function icon(): Electron.NativeImage {
   return nativeImage.createFromBitmap(buf, { width: size, height: size })
 }
 
-export function createTray(actions: {
-  openBar: () => void
-  screenshot: () => void
-  dashboard: () => void
-  quit: () => void
-}): void {
-  tray = new Tray(icon())
-  tray.setToolTip('Orbit')
-  tray.on('click', actions.openBar)
+function buildMenu(): void {
+  if (!tray || !actions) return
+  const a = actions
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Ask Orbit', click: actions.openBar },
-      { label: 'Screenshot && ask', click: actions.screenshot },
-      { label: 'Open dashboard', click: actions.dashboard },
+      ...(update ? [{ label: `Restart to update to ${update.version}`, click: update.install }, { type: 'separator' as const }] : []),
+      { label: 'Ask Orbit', click: a.openBar },
+      { label: 'Screenshot && ask', click: a.screenshot },
+      { label: 'Open dashboard', click: a.dashboard },
       { type: 'separator' },
       { label: 'Edit settings.json', click: () => void shell.openPath(paths.settings) },
       { label: 'Open data folder', click: () => void shell.openPath(dataDir) },
       { type: 'separator' },
-      { label: 'Quit Orbit', click: actions.quit }
+      { label: 'Quit Orbit', click: a.quit }
     ])
   )
+  tray.setToolTip(update ? `Orbit (update ${update.version} ready)` : 'Orbit')
+}
+
+export function createTray(a: TrayActions): void {
+  actions = a
+  tray = new Tray(icon())
+  tray.on('click', a.openBar)
+  buildMenu()
+}
+
+/** Adds a "Restart to update" item once an update has downloaded. */
+export function showUpdateInTray(version: string, install: () => void): void {
+  update = { version, install }
+  buildMenu()
 }
