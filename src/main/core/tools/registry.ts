@@ -21,9 +21,9 @@ function policyFor(tool: OrbitTool): ToolPolicy {
  * Wraps each enabled tool with validation, policy, approval and audit.
  * Tools with policy "never" are not exposed to the model at all.
  */
-export function runnableTools(getContext: () => ToolContext['context']): RunnableTool[] {
+export function runnableTools(getContext: () => ToolContext['context'], exclude: string[] = []): RunnableTool[] {
   return allTools()
-    .filter((t) => policyFor(t) !== 'never')
+    .filter((t) => policyFor(t) !== 'never' && !exclude.includes(t.name))
     .map((tool) => ({
       name: tool.name,
       description: tool.description,

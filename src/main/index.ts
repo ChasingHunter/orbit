@@ -16,6 +16,7 @@ import { snipRegion } from './os/screenshot'
 import { VoiceController } from './voice/controller'
 import { transcribe, warmUp } from './voice/localStt'
 import { integrations } from './integrations/manager'
+import { tasks } from './core/tasks'
 import { pasteInto } from './os/writeback'
 import { foregroundWindow, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
 
@@ -85,6 +86,7 @@ async function onScreenshot(): Promise<void> {
 
 function onPanic(): void {
   conversation.cancel()
+  tasks.cancelAll()
   denyAllApprovals()
   new Notification({ title: 'Orbit', body: 'Stopped all running tasks.' }).show()
 }
@@ -158,6 +160,7 @@ app.whenReady().then(() => {
 
   registerIpc()
   void integrations.startAll()
+  tasks.markInterrupted()
   setApprovalPresenter((request) => {
     sendToBar({ type: 'approval', request })
     if (!bar().isVisible()) showBar()
@@ -170,7 +173,7 @@ app.whenReady().then(() => {
   createTray({ openBar: () => void onBarHotkey(), screenshot: () => void onScreenshot(), quit: () => app.quit() })
   if (process.env.ORBIT_E2E) {
     // Test hook for scripts/e2e.ts; never set in normal runs.
-    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations } })
+    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks } })
     return
   }
   startSelectionHook()
