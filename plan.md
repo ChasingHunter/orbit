@@ -7,7 +7,84 @@ This is the working plan I build from. It's written as notes, so expect shorthan
 ## Status (v0.7, Sept 2026)
 Done: Day 1, 2, 3 and most of Phase 2. Bar + context capture, voice (Parakeet local + Wispr), runners (Claude subscription, API key, Ollama, offline fallback), MCP integrations (Notion, Slack, Gmail/Calendar), memory, background agents, workflows (triggers, if/foreach/parallel/code in QuickJS, visual editor), spoken replies (Pocket TTS / Windows voice), NSIS + auto-update.
 Added since the plan: autonomy levels (strict / careful / trusted / full) over risk classes (read / local / external / destructive) + per-tool overrides + "allow for this chat"; undo journal for everything in Orbit's own space; token usage page + daily background budget; Setup page (dependency checks, Claude sign-in, bundled vs installed Claude Code).
-Not yet: headless server mode, phone bridge, macOS, code signing.
+Not yet: headless server mode, phone bridge, macOS, code signing. Next steps: see "Next" below.
+
+## Next: closing the gap with Claude (v0.8 to v1.0)
+
+Gap list came from comparing Orbit with the Claude apps + Claude Code. Rules that hold for everything below:
+- Every new write goes through the journal. If it can't be undone, it's `external` or `destructive` and asks at Careful.
+- New tools cost tokens on every turn, so each group is lazy: the model sees one short `*_guide`/entry tool until it needs the group (same trick as `workflow_guide`). Target: base tool list stays under 3k tokens.
+- Nothing here needs a server or an account. Optional installs are downloaded on demand and show up on the Setup page.
+- Each item ships with an e2e script (no real screen capture, no real sends).
+
+### v0.8: hands (local work, all undoable)
+
+**1. Attachments in the bar.** Drag, paste (Ctrl+V) or a paperclip button. Chips above the input, same as the selection chip.
+- Images → `turn.images` (already supported by both runners).
+- PDF/txt/md/csv/code → text via the existing folder reader; docx → `mammoth`; xlsx/csv → SheetJS to a table preview (first ~200 rows + header, full file stays readable by tools).
+- Copied into `%APPDATA%\Orbit\attachments\<chat>\` so tools and later turns can reread it without re-sending. Marked untrusted like selection text. Size cap 20 MB, text cap with "truncated, ask for more".
+- Also: "Ask Orbit about this" in Explorer right-click menu (registry verb → `orbit://attach?path=`). Optional, off by default.
+
+**2. Office files out.** Tools `make_document` (docx via `docx`), `make_spreadsheet` (xlsx via `exceljs`, formulas + basic charts), `make_slides` (pptx via `pptxgenjs`), `make_pdf` (HTML → Electron `printToPDF`).
+- Model passes structured JSON (headings/paragraphs/tables, sheets/rows, slides/bullets), not code. Small schema, lazy `office_guide`.
+- Output goes to Orbit's files folder → `local` risk, journaled (needs binary snapshots, see 3). Answer shows a file chip: Open, Show in folder, Copy to...
+- Editing an existing Office file = read it (1) + write a new version (3), never in place without a snapshot.
+
+**3. Writing to your folders, with undo.**
+- Allowed folders get a mode: read-only (default) or read-write. Set per folder in Settings.
+- Tools: `write_file` (create only, fails if it exists), `edit_file` (exact string replace, text files), `move_file`, `delete_file`, `copy_to` (files folder → your folder).
+- Risk: create = `local` (undo = delete it). Edit/move/delete = `destructive` (asks up to Trusted).
+- Journal gets real file snapshots: before any change, the old bytes go to `%APPDATA%\Orbit\snapshots\<id>` (binary safe, replaces the 256 KB text-in-db `snapshot`). Delete = move to the snapshot store, never a real delete. Undo checks the file's hash first; if you edited it since, it asks before overwriting your newer version.
+- Retention: 30 days or 2 GB, oldest first, both in Settings. Usage page shows snapshot size.
+- Batch changes ("rename all 40 invoices") = one journal entry with one Undo, and one approval card listing every change.
+
+**4. Running code.**
+- `run_python` in Pyodide (Python compiled to WASM) in a worker thread. Real sandbox like the QuickJS one: no network, no disk except a virtual folder. Attachments and chosen allowed-folder files are copied in read-only; whatever lands in `/out` is copied to the files folder. numpy, pandas, matplotlib load on demand (downloaded once, cached; shows on Setup). Time/memory limits configurable (default 60 s / 1 GB). Risk `local` → runs at Careful. Covers "crunch this CSV", charts, file conversion.
+- `run_command` (real PowerShell) for things the sandbox can't do (install, git, system stuff). Off by default, turned on in Permissions. Always `destructive`; card shows the exact command + working folder. Output + exit code logged. Honest: not undoable, says so on the card.
+- Later, maybe: run real Python under a Windows AppContainer (no network, only the scratch folder). Only if Pyodide turns out too limited.
+
+**5. Chat polish.**
+- Retry last reply, edit last message (truncates and resends). Branching: not planned, history keeps the old version instead.
+- Model chip in the bar: click to switch model for this chat (quick / chat / research / any Ollama model), plus effort. Doesn't change Settings.
+- Math via KaTeX (marked extension). Tables already work; check wide ones scroll instead of overflow.
+
+### v0.9: reach out
+
+**6. Web search with no key.** When the runner is Claude, allow Claude's own server-side WebSearch/WebFetch (currently disabled with the other built-ins). Uses the subscription, no key. Brave/Tavily stay for Ollama/API runners and as a choice. Gate as `read`. Verify at build time: which SDK tools stay off, token cost per search.
+
+**7. Browser actions.** Playwright driving a dedicated Orbit Chrome/Edge profile (visible window, you sign in to sites once there; your normal browser is untouched).
+- Tools: `browser_open`, `browser_read` (text + numbered interactive elements, not screenshots, cheaper), `browser_click`, `browser_type`, `browser_screenshot` (only when text isn't enough).
+- Risk: open/read = `read`, click/type = `external`. "Allow for this site for this chat" on the card. Forms that submit payments or passwords always ask, whatever the level.
+- Page text stays untrusted. Stop hotkey closes the automation.
+- Uses the installed Edge/Chrome (no bundled browser download). Setup check for it.
+
+**8. Deep research.** Built on background tasks: plan (list of questions) → parallel searchers (up to 4, each capped) → fetch + extract → write report with numbered citations → md + docx in files folder.
+- Before starting: estimate ("about 150k tokens, 8 minutes") and a hard cap, counted against the background budget. Progress in the Tasks page, cancellable, partial report kept if stopped.
+
+**9. Connectors in the dashboard.** A directory of hosted MCP servers that support sign-in in the browser (dynamic client registration, like Notion): e.g. Linear, GitHub, Atlassian, Asana, Sentry, Stripe, Hugging Face. One click → browser sign-in → done. Plus an "Add your own" form (URL, or command + args) so nobody edits `integrations.json`. Slack/Google stay bring-your-own-app until they offer this; keep the walkthrough. Directory is a JSON file in the repo, checked on update, no server.
+
+**10. Skills.** Read Claude-style skills (`SKILL.md` folders), from Orbit's own `skills\` and, if present, `~\.claude\skills` (no duplicate copies). The model sees only names + one-line descriptions via `use_skill`; the full text loads when used. Scripts inside a skill run through `run_python`/`run_command`, so the same approvals apply. Skills page in the dashboard: list, turn on/off, open folder.
+
+**11. Projects.** A project = name + instructions + pinned files/folders + its own memory scope + its own history. Chip in the bar to pick the active one (or none). Pinned files are indexed once (FTS, chunked), searched per question instead of pasted in every turn, to keep tokens down. Workflows can run inside a project.
+
+### v1.0: making and reaching
+
+**12. Artifacts.** `make_page` writes an HTML file (charts via a bundled chart lib, no CDN) to the files folder and opens it in a locked-down Orbit window: no Node, strict CSP, no network unless you allow it. Pages list in the dashboard. Share = export the .html, or publish as a GitHub Gist (`external`, asks).
+
+**13. Phone.** Telegram bot as the bridge: you create a bot with BotFather (walkthrough), Orbit long-polls, so no server and no open ports. Only your chat ID is accepted. Approvals show as Telegram buttons. Works while the PC is on. Headless/always-on mode comes after.
+
+**14. Computer use for other apps.** Last, because it's the riskiest and costliest. Windows UI Automation first (read controls, click, type by name, no screenshots), screenshots only as fallback. Always `external`, per-app allow list, stop hotkey. Decide after 7 whether it's worth it.
+
+### Not planned
+Accounts, cloud sync, team sharing (single-user by design; export instead). Branching chats. Mac/phone apps (Telegram covers phone).
+
+### Order and size (rough)
+1 attachments (1 day) → 5 chat polish (0.5) → 3 folder writes + snapshots (1.5) → 2 office (1) → 4 Pyodide (1.5) → release 0.8.
+6 search (0.5) → 9 connectors (1) → 7 browser (2) → 10 skills (1) → 8 research (1.5) → 11 projects (2) → release 0.9.
+12, 13, 14 → 1.0.
+
+### Verify at build time (new)
+Pyodide in an Electron worker: package cache location, pandas load time, memory limit. Agent SDK: enabling only WebSearch/WebFetch while other built-ins stay off, and their token cost. Which hosted MCP servers really support dynamic client registration today. Playwright `connectOverCDP` vs `launchPersistentContext` with system Edge. `docx`/`exceljs`/`pptxgenjs` bundle size in the installer.
 
 ## Context
 Always-on personal AI assistant, Windows-first, open source, low maintenance:
