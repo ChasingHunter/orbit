@@ -88,7 +88,9 @@ export type WorkflowInfo = {
 
 export type TemplateInfo = { id: string; title: string; summary: string; installed: boolean }
 
-export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'settings'
+export type AuditItem = { at: string; tool: string; decision: 'allowed' | 'approved' | 'denied' | 'blocked'; ok?: boolean; input: unknown; output?: string }
+
+export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'logs' | 'settings'
 
 export interface DashApi {
   onChanged(cb: (what: 'integrations' | 'tasks' | 'memory' | 'history' | 'settings' | 'workflows') => void): () => void
@@ -123,6 +125,7 @@ export interface DashApi {
   /** Validates and saves; returns the saved name. Throws with the problems if invalid. */
   workflowSave(previousName: string | null, data: unknown): Promise<string>
   tools(): Promise<{ name: string; description: string; sideEffect: boolean }[]>
+  audit(limit?: number): Promise<AuditItem[]>
   settings(): Promise<DashSettings>
   updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[] }): Promise<void>
   pickFolder(): Promise<string | null>

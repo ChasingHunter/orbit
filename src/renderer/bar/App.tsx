@@ -3,6 +3,8 @@ import {
   AppWindow,
   ArrowUp,
   Bell,
+  ArrowRight,
+  Brain,
   Check,
   ClipboardPaste,
   Copy,
@@ -39,6 +41,7 @@ type Entry =
   | Assistant
   | { kind: 'notice'; id: string; level: 'info' | 'error'; text: string; action?: { label: string; command: string } }
   | { kind: 'progress'; id: string; label: string; value: number; done?: boolean }
+  | { kind: 'suggestion'; id: string; text: string; state: 'open' | 'saved' | 'dismissed' }
 
 export function App(): React.JSX.Element {
   const [context, setContext] = useState<ContextItem[]>([])
@@ -119,6 +122,9 @@ export function App(): React.JSX.Element {
           break
         case 'question':
           setQuestions((q) => [...q, ev.question])
+          break
+        case 'memory-suggestion':
+          setEntries((all) => [...all, { kind: 'suggestion', id: ev.id, text: ev.text, state: 'open' }])
           break
         case 'restore':
           setEntries([
@@ -277,9 +283,20 @@ export function App(): React.JSX.Element {
 
         {hasThread && (
           <div ref={scrollRef} className="max-h-[440px] space-y-4 overflow-y-auto px-4 py-3 text-[13.5px] leading-relaxed">
-            {entries.map((e) => (
-              <EntryView key={e.id} entry={e} />
-            ))}
+            {entries.map((e) =>
+              e.kind === 'suggestion' ? (
+                <SuggestionChip
+                  key={e.id}
+                  entry={e}
+                  onDecide={(save) => {
+                    if (save) void api.saveMemory(e.text)
+                    setEntries((all) => all.map((x) => (x.id === e.id ? { ...e, state: save ? 'saved' : 'dismissed' } : x)))
+                  }}
+                />
+              ) : (
+                <EntryView key={e.id} entry={e} />
+              )
+            )}
             {approvals.map((r) => (
               <ApprovalCard key={r.id} req={r} onDecide={decide} />
             ))}
@@ -429,7 +446,7 @@ function EntryView({ entry }: { entry: Entry }): React.JSX.Element {
         {error ? <TriangleAlert size={14} className="shrink-0" /> : <Check size={14} className="shrink-0 text-emerald-400" />}
         <span className="flex-1">{entry.text}</span>
         {action && (
-          <ActionButton icon={Download} onClick={() => void window.orbit.submit(action.command, [])}>
+          <ActionButton icon={action.command.startsWith('/install') ? Download : ArrowRight} onClick={() => void window.orbit.submit(action.command, [])}>
             {action.label}
           </ActionButton>
         )}
@@ -464,6 +481,7 @@ function EntryView({ entry }: { entry: Entry }): React.JSX.Element {
     )
   }
 
+  if (entry.kind === 'suggestion') return <></> // rendered by SuggestionChip
   const a = entry
   return (
     <div className="space-y-2" data-state={a.done ? 'done' : 'running'}>
@@ -553,6 +571,30 @@ function CopyButton({ text }: { text: string }): React.JSX.Element {
     >
       {copied ? 'Copied' : 'Copy'}
     </ActionButton>
+  )
+}
+
+function SuggestionChip(props: { entry: Extract<Entry, { kind: 'suggestion' }>; onDecide: (save: boolean) => void }): React.JSX.Element {
+  const { entry } = props
+  if (entry.state === 'dismissed') return <></>
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-violet-400/20 bg-violet-400/[0.05] px-2.5 py-1.5 text-xs" data-testid="memory-suggestion">
+      <Brain size={13} className="shrink-0 text-violet-300" />
+      <span className="flex-1 text-zinc-200">
+        {entry.state === 'saved' ? 'Saved: ' : 'Remember this? '}
+        <span className="text-zinc-400">{entry.text}</span>
+      </span>
+      {entry.state === 'open' && (
+        <>
+          <button onClick={() => props.onDecide(true)} className="rounded-md bg-violet-500/80 px-2 py-0.5 text-white hover:bg-violet-500">
+            Save
+          </button>
+          <button onClick={() => props.onDecide(false)} className="rounded-md px-2 py-0.5 text-zinc-400 hover:bg-white/10">
+            No
+          </button>
+        </>
+      )}
+    </div>
   )
 }
 

@@ -1,4 +1,5 @@
 import { dialog, ipcMain, shell } from 'electron'
+import { existsSync, readFileSync } from 'node:fs'
 import type { DashSettings, MemoryKind } from '@shared/dash'
 import { dataDir, paths } from './paths'
 import { settings } from './settingsStore'
@@ -112,6 +113,21 @@ export function registerDashboardIpc(): void {
     const t = TEMPLATES.find((x) => x.id === id)
     if (!t) throw new Error(`Unknown template ${id}`)
     workflowStore.save(t.yaml)
+  })
+
+  ipcMain.handle('dash:audit', (_e, limit = 500) => {
+    if (!existsSync(paths.audit)) return []
+    const lines = readFileSync(paths.audit, 'utf8').trimEnd().split('\n')
+    return lines
+      .slice(-limit)
+      .reverse()
+      .flatMap((l) => {
+        try {
+          return [JSON.parse(l)]
+        } catch {
+          return []
+        }
+      })
   })
 
   ipcMain.handle('dash:tasks', () => tasks.list())

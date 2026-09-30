@@ -11,6 +11,8 @@ import { Conversation } from './core/conversation'
 import { denyAllApprovals, resolveApproval, setApprovalPresenter } from './core/approvals'
 import { answerQuestion, setQuestionPresenter } from './core/questions'
 import { getConversation } from './core/history'
+import { setMemorySuggestionPresenter } from './core/tools/builtins/suggest'
+import { addMemory } from './core/memory'
 import { bar, createBar, hideBar, resizeBar, sendToBar, setBarBlurHandler, showBar } from './windows/bar'
 import { bindHotkeys } from './os/hotkeys'
 import { createTray } from './os/tray'
@@ -40,7 +42,10 @@ if (!app.requestSingleInstanceLock()) app.quit()
 let prevWindow: Hwnd // window the user was in before Orbit took focus (for Replace)
 let prevApp = ''
 const voice = new VoiceController(sendToBar)
-const conversation = new Conversation((turnId, event) => sendToBar({ type: 'agent', turnId, event }))
+const conversation = new Conversation(
+  (turnId, event) => sendToBar({ type: 'agent', turnId, event }),
+  (text, action) => sendToBar({ type: 'notice', level: 'info', text, action })
+)
 
 function autoSubmitMs(): number | null {
   const v = settings.current.voice
@@ -49,6 +54,8 @@ function autoSubmitMs(): number | null {
 
 /** Grabs active window + selection from the app the user is in, before the bar steals focus. */
 async function captureContext(): Promise<ContextItem[]> {
+  // Automated tests must never pick up whatever the person has open on their screen.
+  if (process.env.ORBIT_E2E) return []
   const hwnd = foregroundWindow()
   const info = windowInfo(hwnd)
   if (info.app.toLowerCase() === 'electron.exe' || info.app.toLowerCase() === 'orbit.exe') return []
@@ -136,6 +143,11 @@ function handleCommand(text: string): boolean {
     }
     return true
   }
+  if (cmd === '/use-model') {
+    conversation.useModelForNow(args[0])
+    sendToBar({ type: 'notice', level: 'info', text: args[0] ? `Using ${args[0]} until Orbit restarts.` : 'Back to your usual model.' })
+    return true
+  }
   if (cmd === '/run-workflow' && args[0]) {
     sendToBar({ type: 'notice', level: 'info', text: `Running ${args[0]}…` })
     void workflows.run(args[0], 'manual').then((id) => {
@@ -165,6 +177,7 @@ function registerIpc(): void {
   ipcMain.on('bar:new', () => conversation.reset())
   ipcMain.on('bar:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
   ipcMain.on('bar:answer', (_e, id: string, text: string) => answerQuestion(id, text))
+  ipcMain.handle('bar:save-memory', (_e, text: string) => void addMemory(text))
   ipcMain.on('dash:continue', (_e, conversationId: string) => {
     const conv = getConversation(conversationId)
     if (!conv) return
@@ -218,6 +231,7 @@ app.whenReady().then(() => {
       new Notification({ title: 'Missed reminder', body: `${text} (was due ${missedAt?.toLocaleString()})` }).show()
     }
   )
+  setMemorySuggestionPresenter((s) => sendToBar({ type: 'memory-suggestion', ...s }))
   setQuestionPresenter((question) => {
     sendToBar({ type: 'question', question })
     if (!bar().isVisible()) showBar()
@@ -244,7 +258,7 @@ app.whenReady().then(() => {
   })
   if (process.env.ORBIT_E2E) {
     // Test hook for scripts/e2e.ts; never set in normal runs.
-    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers,
+    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation,
       callTool: (name: string, input: unknown) => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [] }) } })
     return
   }

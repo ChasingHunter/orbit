@@ -61,7 +61,9 @@ export const Settings = z.object({
     .object({
       chat: z.string().default('claude:sonnet'),
       quick: z.string().default('claude:haiku'),
-      research: z.string().default('claude:opus')
+      research: z.string().default('claude:opus'),
+      /** Used when offline or when the usual model hits a limit. 'auto' picks a local Ollama model. */
+      fallback: z.string().default('auto')
     })
     .prefault({}),
 

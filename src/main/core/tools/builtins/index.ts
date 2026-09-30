@@ -10,5 +10,6 @@ import { readFeed } from './feeds'
 import { readSavedFile, saveFile } from './files'
 import { listFolder, readFile } from './folders'
 import { askUserTool } from './ask'
+import { suggestMemory } from './suggest'
 
-export const builtinTools = [webSearch, webFetch, notify, getContext, remember, recall, forget, listIntegrations, startBackgroundTask, spawnAgents, setReminder, listReminders, cancelReminder, createWorkflow, listWorkflows, runWorkflow, deleteWorkflow, readFeed, saveFile, readSavedFile, listFolder, readFile, askUserTool] as unknown as OrbitTool[]
+export const builtinTools = [webSearch, webFetch, notify, getContext, remember, recall, forget, listIntegrations, startBackgroundTask, spawnAgents, setReminder, listReminders, cancelReminder, createWorkflow, listWorkflows, runWorkflow, deleteWorkflow, readFeed, saveFile, readSavedFile, listFolder, readFile, askUserTool, suggestMemory] as unknown as OrbitTool[]

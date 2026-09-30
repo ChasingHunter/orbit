@@ -35,6 +35,7 @@ export type BarEvent =
   /** Local engine: start/stop mic capture in the bar. discard = drop audio (bar closed). */
   | { type: 'record'; value: boolean; discard?: boolean }
   | { type: 'progress'; id: string; label: string; value: number; done?: boolean }
+  | { type: 'memory-suggestion'; id: string; text: string }
   | { type: 'question'; question: { id: string; question: string; options: string[]; from: string } }
   /** Shows an earlier conversation so the user can carry on with it. */
   | { type: 'restore'; title: string; messages: { role: 'user' | 'assistant'; text: string }[] }
@@ -47,6 +48,7 @@ export interface OrbitApi {
   newChat(): void
   approve(id: string, approved: boolean): void
   answer(id: string, text: string): void
+  saveMemory(text: string): Promise<void>
   toggleVoice(): void
   /** Local engine: 16 kHz mono samples -> text. */
   transcribe(samples: Float32Array): Promise<string>
