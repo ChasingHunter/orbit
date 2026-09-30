@@ -4,13 +4,13 @@ Orbit is a small assistant that sits in your Windows tray. Press a hotkey, say o
 
 I wanted something like the Gemini or Copilot sidebar, but for every app on my PC, open source, and not tied to one AI company. You can point it at your Claude subscription, an API key, or a model running locally in Ollama, and everything else works the same.
 
-It's early (version 0.1). The basics work. Connecting Slack, Google and Notion, memory, and scheduled workflows are next. The full roadmap is in [plan.md](plan.md).
+It's early (version 0.2). It can now remember things about you, work in the background, and use Notion, Slack, Gmail and Google Calendar. Scheduled workflows are next. The full roadmap is in [plan.md](plan.md).
 
 ## Install
 
 Grab `Orbit Setup x.y.z.exe` from [Releases](../../releases) and run it. It isn't code-signed yet, so Windows will show a blue "Windows protected your PC" screen. Click "More info", then "Run anyway".
 
-After that Orbit lives in the tray. Right-click the icon to open the settings file.
+After that Orbit lives in the tray. Click the icon to open the bar, or right-click it for the dashboard, where you connect services, look through your memory and history, and see background jobs.
 
 ## Using it
 
@@ -36,6 +36,26 @@ Speech-to-text runs on your own machine using NVIDIA's Parakeet model through [s
 
 If you'd rather use [Wispr Flow](https://wisprflow.ai), set `voice.engine` to `"wispr"` in settings and Orbit will trigger it with Wispr's own shortcut.
 
+## Memory
+
+Tell Orbit "remember that Sam is my cofounder, his email is sam@example.com" and it saves that on your PC. Later, when you ask something related ("email Sam the notes"), the matching memories go along with your question, so you don't have to repeat yourself. You can see, edit and delete everything it knows in the dashboard.
+
+Mark a memory private and it's only ever sent to models running on your own machine, like Ollama. Orbit refuses to store anything that looks like a password, card number or API key, even if you ask.
+
+## Background jobs
+
+Say "research the best Postgres hosting for a startup in India, in the background" and Orbit hands it to a separate agent so you can keep going. When it's done you get a notification, and the result is saved as a markdown file (the dashboard has it too). For jobs that split up neatly, it can run up to four agents at the same time and put their answers together.
+
+## Connecting your apps
+
+Open the dashboard and go to Integrations.
+
+Notion is one click: it opens Notion in your browser and you pick which pages Orbit can see.
+
+Slack and Google take a few minutes of setup, because neither lets outside apps connect without you creating your own app or OAuth client first. The dashboard walks you through it step by step. Your tokens are encrypted on your PC and never shown to the model.
+
+Anything that works over MCP can be added the same way by editing `integrations.json`. If a service isn't connected and you ask for something that needs it, Orbit tells you instead of pretending.
+
 ## Choosing a model
 
 In `settings.json`, `models.chat` looks like `"claude:sonnet"` or `"ollama:qwen3:4b"`: the provider name, a colon, then the model.
@@ -57,6 +77,7 @@ npm install
 npm run dev          # runs with hot reload
 npm run typecheck
 npm run test:e2e     # opens the app with Playwright and screenshots the bar
+node scripts/e2e-dashboard.mjs   # dashboard pages, no model calls
 npm run dist         # builds the installer into dist/
 ```
 
