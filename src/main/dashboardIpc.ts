@@ -14,7 +14,8 @@ import { notifyDashboard } from './windows/dashboard'
 import { workflowStore } from './workflows/store'
 import { workflows } from './workflows/engine'
 import { TEMPLATES } from './workflows/templates'
-import { describeCron } from './workflows/describe'
+import { describeTrigger } from './workflows/describe'
+import { triggers } from './workflows/triggers'
 import { scheduler } from './core/scheduler'
 import type { WorkflowInfo } from '@shared/dash'
 
@@ -76,7 +77,9 @@ export function registerDashboardIpc(): void {
         name: wf.name,
         description: wf.description,
         enabled: wf.enabled,
-        schedule: 'cron' in wf.trigger ? describeCron(wf.trigger.cron) : 'When you run it',
+        schedule: describeTrigger(wf.trigger),
+        webhookUrl: 'webhook' in wf.trigger ? triggers.webhookUrl(wf.name) : undefined,
+        triggerError: triggers.status(wf.name)?.lastError ?? undefined,
         nextRun: wf.enabled && next ? next.toISOString() : null,
         stepCount: wf.prompt ? 1 : wf.steps.length,
         lastRun: workflows.runs(wf.name, 1)[0]

@@ -45,6 +45,27 @@ function format(results: { title: string; url: string; snippet?: string }[]): st
   return results.map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet ?? ''}`.trimEnd()).join('\n')
 }
 
+/**
+ * Fetches a page and returns its readable text. With a CSS selector, returns just that element's
+ * text (useful for watching one part of a page, like a price or a job list).
+ */
+export async function fetchPageText(url: string, signal: AbortSignal, selector?: string): Promise<{ text: string; title: string }> {
+  const res = await fetch(url, { signal, headers: { 'User-Agent': UA }, redirect: 'follow' })
+  if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`)
+  const type = res.headers.get('content-type') ?? ''
+  const body = await res.text()
+  if (!type.includes('html')) return { text: body, title: '' }
+  const { document } = parseHTML(body)
+  if (selector) {
+    const el = document.querySelector(selector)
+    if (!el) throw new Error(`Nothing on the page matches "${selector}"`)
+    return { text: (el.textContent ?? '').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim(), title: document.title }
+  }
+  const article = new Readability(document as unknown as Document).parse()
+  const text = (article?.textContent ?? document.body?.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim()
+  return { text, title: article?.title ?? '' }
+}
+
 export const webFetch = defineTool({
   name: 'web_fetch',
   description:
@@ -55,18 +76,7 @@ export const webFetch = defineTool({
   },
   sideEffect: false,
   run: async ({ url, maxChars = 20000 }, { signal }) => {
-    const res = await fetch(url, { signal, headers: { 'User-Agent': UA }, redirect: 'follow' })
-    if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`)
-    const type = res.headers.get('content-type') ?? ''
-    const body = await res.text()
-    let text = body
-    let title = ''
-    if (type.includes('html')) {
-      const { document } = parseHTML(body)
-      const article = new Readability(document as unknown as Document).parse()
-      title = article?.title ?? ''
-      text = (article?.textContent ?? document.body?.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim()
-    }
+    let { text, title } = await fetchPageText(url, signal)
     if (text.length > maxChars) text = text.slice(0, maxChars) + '\n…[truncated]'
     return `<untrusted_web_content url="${url}" title="${title}">\n${text}\n</untrusted_web_content>`
   }

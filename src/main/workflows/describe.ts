@@ -1,4 +1,6 @@
-// Turns common cron patterns into plain words for the dashboard. Falls back to the raw pattern.
+import type { Trigger } from './schema'
+
+// Turns triggers (and common cron patterns) into plain words for the dashboard.
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -28,4 +30,22 @@ export function describeCron(cron: string): string {
   const everyM = m.match(/^\*\/(\d+)$/)
   if (everyM && h === '*' && dom === '*' && dow === '*') return `Every ${everyM[1]} minutes`
   return cron
+}
+
+function host(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+export function describeTrigger(t: Trigger): string {
+  if ('cron' in t) return describeCron(t.cron)
+  if ('manual' in t) return 'When you run it'
+  if ('feed' in t) return `New posts on ${host(t.feed.url)} (checks every ${t.feed.every})`
+  if ('page' in t) return `When ${host(t.page.url)}${t.page.selector ? ` (${t.page.selector})` : ''} changes (checks every ${t.page.every})`
+  if ('poll' in t) return `When ${t.poll.tool} returns something new (checks every ${t.poll.every})`
+  if ('folder' in t) return `New ${t.folder.pattern === '*' ? 'files' : t.folder.pattern + ' files'} in ${t.folder.path}`
+  return 'When its webhook is called'
 }

@@ -8,7 +8,13 @@ import { defineTool } from '../types'
 const SPEC = `YAML format:
 name: lowercase-with-dashes
 description: one line
-trigger: { cron: "0 8 * * 1-5" }   # local time; or { manual: true }
+trigger: { cron: "0 8 * * 1-5" }   # local time. Other triggers (pick one):
+#   { manual: true }
+#   { feed: { url: "https://...rss", every: 30m } }            -> {{trigger.items}} {{trigger.count}}
+#   { page: { url: "https://...", selector: ".price", every: 1h } } -> {{trigger.changes}} {{trigger.text}}
+#   { poll: { tool: gmail__search_gmail_messages, args: { query: "is:unread from:bank" }, every: 15m } } -> {{trigger.output}}
+#   { folder: { path: "C:/Users/me/Downloads", pattern: "*.pdf" } } -> {{trigger.file}} {{trigger.name}}
+#   { webhook: true }                                          -> {{trigger.body}} {{trigger.query}}
 missed: ask                         # if the PC was off at that time: ask | run | skip
 model: chat                         # quick | chat | research | provider:model
 # EITHER one agentic prompt (model picks tools; optional allowlist):

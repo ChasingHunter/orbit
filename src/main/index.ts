@@ -20,6 +20,7 @@ import { integrations } from './integrations/manager'
 import { tasks } from './core/tasks'
 import { scheduler } from './core/scheduler'
 import { workflows } from './workflows/engine'
+import { triggers } from './workflows/triggers'
 import { registerDashboardIpc } from './dashboardIpc'
 import { openDashboard } from './windows/dashboard'
 import { pasteInto } from './os/writeback'
@@ -213,7 +214,7 @@ app.whenReady().then(() => {
   })
   if (process.env.ORBIT_E2E) {
     // Test hook for scripts/e2e.ts; never set in normal runs.
-    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows } })
+    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers } })
     return
   }
   startSelectionHook()

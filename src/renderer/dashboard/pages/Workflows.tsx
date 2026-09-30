@@ -164,6 +164,13 @@ function WorkflowDetail({ wf, onBack }: { wf: WorkflowInfo; onBack: () => void }
           </>
         }
       />
+      {wf.webhookUrl && (
+        <Card className="mb-4 px-4 py-3 text-xs text-zinc-400">
+          Webhook URL (works from this PC only):
+          <code className="mt-1 block rounded bg-black/30 px-2 py-1 font-mono text-[11px] break-all text-zinc-300 select-all">{wf.webhookUrl}</code>
+        </Card>
+      )}
+      {wf.triggerError && <p className="mb-4 text-sm text-amber-300">Trigger problem: {wf.triggerError}</p>}
       {runs.length === 0 ? (
         <Empty icon={Clock} title="Hasn't run yet">
           {wf.nextRun ? `First run ${new Date(wf.nextRun).toLocaleString()}.` : 'Click Run now to try it.'}
@@ -176,7 +183,7 @@ function WorkflowDetail({ wf, onBack }: { wf: WorkflowInfo; onBack: () => void }
                 <RunBadge run={r} />
                 <span className="text-sm text-zinc-200">{new Date(r.started_at).toLocaleString()}</span>
                 <span className="text-xs text-zinc-500">
-                  {r.trigger === 'schedule' ? 'on schedule' : r.trigger === 'missed' ? 'caught up after being missed' : 'run by you'}
+                  {{ schedule: 'on schedule', missed: 'caught up after being missed', event: 'started by its trigger', manual: 'run by you' }[r.trigger]}
                   {r.finished_at && ` · took ${Math.max(1, Math.round((+new Date(r.finished_at) - +new Date(r.started_at)) / 1000))}s`}
                 </span>
                 <span className="flex-1" />

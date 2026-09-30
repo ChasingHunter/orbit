@@ -63,12 +63,41 @@ export function stepProblems(rawSteps: unknown): string[] {
 }
 export type Step = z.infer<typeof Step>
 
+const Every = z
+  .string()
+  .regex(/^\d+(m|h|d)$/, 'Check interval like 15m, 2h or 1d')
+  .refine((d) => durationMs(d) >= 60_000, 'Check at most once a minute')
+
+/**
+ * What starts a run. Event triggers check on an interval (or watch a folder, or listen for a
+ * webhook) and pass what they found to the steps as {{trigger.*}}.
+ */
+export const Trigger = z.union([
+  z.strictObject({ cron: z.string() }),
+  z.strictObject({ manual: z.literal(true) }),
+  /** New posts in an RSS/Atom feed. {{trigger.items}}, {{trigger.count}} */
+  z.strictObject({ feed: z.strictObject({ url: z.string().url(), every: Every.default('30m') }) }),
+  /** A web page (or one part of it) changed. {{trigger.changes}}, {{trigger.text}} */
+  z.strictObject({ page: z.strictObject({ url: z.string().url(), selector: z.string().optional(), every: Every.default('1h') }) }),
+  /** A read-only tool's result changed, e.g. a Gmail search. {{trigger.output}}, {{trigger.previous}} */
+  z.strictObject({ poll: z.strictObject({ tool: z.string(), args: z.record(z.string(), z.unknown()).default({}), every: Every.default('15m') }) }),
+  /** A new file appeared in a folder. {{trigger.file}}, {{trigger.name}} */
+  z.strictObject({ folder: z.strictObject({ path: z.string(), pattern: z.string().default('*') }) }),
+  /** Another app called Orbit's local webhook URL. {{trigger.body}}, {{trigger.query}} */
+  z.strictObject({ webhook: z.literal(true) })
+])
+export type Trigger = z.infer<typeof Trigger>
+
+export function triggerKind(t: Trigger): 'cron' | 'manual' | 'feed' | 'page' | 'poll' | 'folder' | 'webhook' {
+  return Object.keys(t)[0] as ReturnType<typeof triggerKind>
+}
+
 export const Workflow = z
   .object({
     name: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'Name: lowercase letters, numbers and dashes, e.g. daily-newsletter'),
     description: z.string().default(''),
     enabled: z.boolean().default(true),
-    trigger: z.union([z.object({ cron: z.string() }), z.object({ manual: z.literal(true) })]).default({ manual: true }),
+    trigger: Trigger.default({ manual: true }),
     /** What to do when the PC was off at the scheduled time. */
     missed: z.enum(['ask', 'run', 'skip']).default('ask'),
     model: z.string().default('chat').describe('quick, chat, research, or provider:model'),

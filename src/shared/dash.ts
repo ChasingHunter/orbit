@@ -48,7 +48,7 @@ export type DashSettings = {
 export type WorkflowRunItem = {
   id: string
   workflow: string
-  trigger: 'schedule' | 'manual' | 'missed'
+  trigger: 'schedule' | 'manual' | 'missed' | 'event'
   status: 'running' | 'done' | 'failed' | 'cancelled'
   output: string | null
   error: string | null
@@ -76,6 +76,9 @@ export type WorkflowInfo = {
   schedule: string
   nextRun: string | null
   stepCount: number
+  webhookUrl?: string
+  /** Last problem an event trigger hit, e.g. a feed that didn't load. */
+  triggerError?: string
   lastRun?: WorkflowRunItem
   /** Set when the YAML file doesn't load. */
   error?: string
