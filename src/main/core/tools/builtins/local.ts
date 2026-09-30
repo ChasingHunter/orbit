@@ -26,7 +26,8 @@ export const getContext = defineTool({
         if (c.kind === 'selection') return `Selected text in ${c.app}:\n${c.text}`
         if (c.kind === 'window') return `Active window: ${c.app}, titled "${c.title}"`
         if (c.kind === 'url') return `Open browser tab: ${c.url}`
-        return `Screenshot attached (${c.width}x${c.height}); already visible to you as an image.`
+        if (c.kind === 'file') return `Attached file ${c.name} at ${c.path} (${c.chars} characters; read it with read_file)`
+        return `${c.name ? `Image ${c.name}` : 'Screenshot'} attached (${c.width}x${c.height}); already visible to you as an image.`
       })
       .join('\n\n')
   }

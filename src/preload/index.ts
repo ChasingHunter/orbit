@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { BarEvent, OrbitApi } from '@shared/types'
 import type { DashApi, DashPage } from '@shared/dash'
 
@@ -23,6 +23,10 @@ const api: OrbitApi = {
   copy: (text) => ipcRenderer.send('bar:copy', text),
   replaceSelection: (text) => ipcRenderer.invoke('bar:replace', text),
   requestScreenshot: () => ipcRenderer.send('bar:screenshot'),
+  attachPaths: (paths) => ipcRenderer.invoke('bar:attach', paths),
+  attachData: (name, data) => ipcRenderer.invoke('bar:attach-data', name, data),
+  keepOpen: (on) => ipcRenderer.send('bar:keep-open', on),
+  pathForFile: (file) => webUtils.getPathForFile(file),
   resize: (height) => ipcRenderer.send('bar:resize', height),
   openDashboard: (page) => ipcRenderer.send('bar:dashboard', page),
   snipDone: (rect) => ipcRenderer.send('snip:done', rect),

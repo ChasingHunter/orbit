@@ -40,7 +40,7 @@ Gap list came from comparing Orbit with the Claude apps + Claude Code. Rules tha
 
 **4. Running code.**
 - `run_python` in Pyodide (Python compiled to WASM) in a worker thread. Real sandbox like the QuickJS one: no network, no disk except a virtual folder. Attachments and chosen allowed-folder files are copied in read-only; whatever lands in `/out` is copied to the files folder. numpy, pandas, matplotlib load on demand (downloaded once, cached; shows on Setup). Time/memory limits configurable (default 60 s / 1 GB). Risk `local` → runs at Careful. Covers "crunch this CSV", charts, file conversion.
-- `run_command` (real PowerShell) for things the sandbox can't do (install, git, system stuff). Off by default, turned on in Permissions. Always `destructive`; card shows the exact command + working folder. Output + exit code logged. Honest: not undoable, says so on the card.
+- `run_command` (real PowerShell) for things the sandbox can't do (install, git, system stuff). Off by default, turned on in Permissions. Always `destructive`; card shows a short plain description the model writes ("Check IP address" for `ipconfig`, like Claude Code) above the exact command + working folder. Description also goes in the log. Output + exit code logged. Honest: not undoable, says so on the card.
 - Later, maybe: run real Python under a Windows AppContainer (no network, only the scratch folder). Only if Pyodide turns out too limited.
 
 **5. Chat polish.**

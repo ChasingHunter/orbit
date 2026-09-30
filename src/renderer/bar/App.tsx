@@ -9,11 +9,13 @@ import {
   ClipboardPaste,
   Copy,
   Download,
+  FileText,
   Globe,
   LayoutDashboard,
   Loader2,
   MessageCircleQuestion,
   Mic,
+  Paperclip,
   Plus,
   ScanText,
   ShieldAlert,
@@ -31,6 +33,7 @@ import type { ApprovalRequest, BarEvent, ContextItem } from '@shared/types'
 type QuickAction = Extract<BarEvent, { type: 'open' }>['quickActions'][number]
 type Question = Extract<BarEvent, { type: 'question' }>['question']
 import { Markdown } from './Markdown'
+import { attachFiles } from './attach'
 import { Recorder } from './recorder'
 import { PcmPlayer, SentenceSplitter } from './player'
 
@@ -69,6 +72,18 @@ export function App(): React.JSX.Element {
   const pendingOutput = useRef(new Map<string, 'replace' | 'copy'>())
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
+  useEffect(() => {
+    // The picker's Cancel button fires a native "cancel" event that React doesn't expose.
+    const el = fileRef.current
+    const onCancel = (): void => {
+      api.keepOpen(false)
+      inputRef.current?.focus()
+    }
+    el?.addEventListener('cancel', onCancel)
+    return () => el?.removeEventListener('cancel', onCancel)
+  }, [])
   const scrollRef = useRef<HTMLDivElement>(null)
   const autoSubmitMs = useRef<number | null>(null)
   const awaitingTranscript = useRef(false)
@@ -307,11 +322,52 @@ export function App(): React.JSX.Element {
     setApprovals((a) => a.filter((r) => r.id !== id))
   }
 
+  const addFiles = async (files: File[]): Promise<void> => {
+    if (!files.length) return
+    const { items, errors } = await attachFiles(files)
+    if (items.length) setContext((c) => [...c, ...items])
+    if (errors.length) {
+      setEntries((all) => [...all, ...errors.map((text) => ({ kind: 'notice' as const, id: crypto.randomUUID(), level: 'error' as const, text: `Couldn't attach ${text}` }))])
+    }
+    inputRef.current?.focus()
+  }
+
+  const onPaste = (e: React.ClipboardEvent): void => {
+    const files = [...e.clipboardData.files]
+    if (!files.length) return
+    e.preventDefault()
+    void addFiles(files)
+  }
+
+  const pickFiles = (): void => {
+    api.keepOpen(true)
+    fileRef.current?.click()
+  }
+
   const hasThread = entries.length > 0 || approvals.length > 0 || questions.length > 0
 
   return (
-    <div ref={rootRef} className="p-2">
-      <div className="bar-surface overflow-hidden rounded-2xl text-zinc-100">
+    <div
+      ref={rootRef}
+      className="p-2"
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes('Files')) return
+        e.preventDefault()
+        setDragging(true)
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false)
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragging(false)
+        void addFiles([...e.dataTransfer.files])
+      }}
+    >
+      <div className={`bar-surface relative overflow-hidden rounded-2xl text-zinc-100 ${dragging ? 'ring-2 ring-sky-400/60' : ''}`}>
+        {dragging && (
+          <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center bg-zinc-950/70 text-sm text-sky-200">Drop to attach</div>
+        )}
         {hasThread && (
           <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-1.5">
             <span className="text-[11px] font-medium tracking-wide text-zinc-500">ORBIT</span>
@@ -395,6 +451,7 @@ export function App(): React.JSX.Element {
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={onKeyDown}
+              onPaste={onPaste}
               placeholder={
                 listening
                   ? 'Listening… press the hotkey again to stop'
@@ -408,6 +465,19 @@ export function App(): React.JSX.Element {
               style={{ fieldSizing: 'content' } as React.CSSProperties}
             />
             {speaking && <IconButton icon={VolumeX} label="Stop speaking" onClick={() => api.stopSpeaking()} />}
+            <IconButton icon={Paperclip} label="Attach files" onClick={pickFiles} />
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              hidden
+              aria-label="Attach files"
+              onChange={(e) => {
+                api.keepOpen(false)
+                void addFiles([...(e.target.files ?? [])])
+                e.target.value = ''
+              }}
+            />
             <IconButton icon={ScanText} label="Screenshot & ask" onClick={() => api.requestScreenshot()} />
             {busy ? (
               <button
@@ -463,9 +533,12 @@ function Chip({ item, onRemove }: { item: ContextItem; onRemove: () => void }): 
   } else if (item.kind === 'selection') {
     icon = <TextQuote size={13} className="shrink-0 text-amber-300" />
     label = item.text.replace(/\s+/g, ' ')
+  } else if (item.kind === 'file') {
+    icon = <FileText size={13} className="shrink-0 text-violet-300" />
+    label = `${item.name} · ${formatSize(item.size)}`
   } else {
     icon = <img src={`data:${item.mediaType};base64,${item.base64}`} className="h-4 w-6 shrink-0 rounded-sm object-cover" alt="" />
-    label = `Screenshot ${item.width}×${item.height}`
+    label = item.name ?? `Screenshot ${item.width}×${item.height}`
   }
   return (
     <span className="group flex max-w-[320px] items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] py-1 pr-1 pl-2 text-xs text-zinc-300">
@@ -476,6 +549,12 @@ function Chip({ item, onRemove }: { item: ContextItem; onRemove: () => void }): 
       </button>
     </span>
   )
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
 const TOOL_ICONS: Record<string, LucideIcon> = { web_search: Globe, web_fetch: Globe, notify: Bell }

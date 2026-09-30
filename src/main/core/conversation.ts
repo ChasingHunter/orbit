@@ -50,11 +50,15 @@ function composeTurn(text: string, context: ContextItem[], memories: Memory[]): 
     if (c.kind === 'url') parts.push(`<active_tab url="${c.url.replace(/"/g, '%22')}" />`)
     if (c.kind === 'window') parts.push(`<active_window app="${c.app}" title="${c.title.replace(/"/g, "'")}" />`)
     if (c.kind === 'selection') parts.push(`<untrusted_selection app="${c.app}">\n${c.text}\n</untrusted_selection>`)
+    if (c.kind === 'file') {
+      const cut = c.chars > c.text.length ? ` note="first ${c.text.length} of ${c.chars} characters; read the rest with read_file and offset"` : ''
+      parts.push(`<untrusted_file name="${c.name.replace(/"/g, "'")}" path="${c.path}"${cut}>\n${c.text}\n</untrusted_file>`)
+    }
   }
   const images = context
     .filter((c): c is Extract<ContextItem, { kind: 'screenshot' }> => c.kind === 'screenshot')
     .map((c) => ({ mediaType: c.mediaType, base64: c.base64 }))
-  if (images.length) parts.push(`(${images.length} screenshot${images.length > 1 ? 's' : ''} attached)`)
+  if (images.length) parts.push(`(${images.length} image${images.length > 1 ? 's' : ''} attached)`)
   const prefix = `<context>\n${parts.join('\n')}\n</context>\n\n`
   return { text: prefix + text, images }
 }
@@ -147,7 +151,8 @@ export class Conversation {
     const modelRef = this.override ?? settings.current.models.chat
     this.conversationId ??= createConversation(text, modelRef)
     const conversationId = this.conversationId
-    addMessage(conversationId, 'user', text)
+    const attached = context.flatMap((c) => (c.kind === 'file' ? [c.name] : c.kind === 'screenshot' && c.name ? [c.name] : []))
+    addMessage(conversationId, 'user', attached.length ? `${text}\n\n(attached: ${attached.join(', ')})` : text)
     const selection = context.find((c) => c.kind === 'selection')
     const carry = this.carryOver
     this.carryOver = ''

@@ -15,6 +15,12 @@ export function setBarBlurHandler(fn: () => void): void {
   onBlur = fn
 }
 
+let keepOpen = false
+/** While a file picker is open the bar loses focus; don't treat that as clicking away. */
+export function setBarKeepOpen(on: boolean): void {
+  keepOpen = on
+}
+
 export function createBar(): BrowserWindow {
   win = new BrowserWindow({
     width: WIDTH,
@@ -36,7 +42,7 @@ export function createBar(): BrowserWindow {
   })
   win.webContents.on('will-navigate', (e) => e.preventDefault())
   win.on('blur', () => {
-    if (settings.current.ui.hideOnBlur && !win?.webContents.isDevToolsOpened()) onBlur?.()
+    if (settings.current.ui.hideOnBlur && !keepOpen && !win?.webContents.isDevToolsOpened()) onBlur?.()
   })
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/bar/index.html`)
   else void win.loadFile(join(__dirname, '../renderer/bar/index.html'))

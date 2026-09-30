@@ -47,6 +47,8 @@ When you have text selected, a row of quick actions shows up: Explain, Summarise
 
 For any other answer that rewrites your selection, click "Paste back". Your clipboard is put back the way it was afterwards.
 
+You can also attach files: drag them onto the bar, paste them, or click the paperclip. PDFs, Word, Excel, PowerPoint, images and any text or code file work. Orbit keeps a copy for 30 days so follow-up questions can still read it, and only the first 20,000 characters go along with your question (the model reads on if it needs more). Images are shrunk to the size Claude uses anyway, so a big photo doesn't cost more tokens than it has to.
+
 In a browser, Orbit also picks up the address of the tab you're on, so "what's this article saying?" can read the whole page, not just what you selected.
 
 Every conversation is kept in the dashboard's History, and you can pick one up again from there.

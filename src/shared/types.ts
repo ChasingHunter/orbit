@@ -2,7 +2,9 @@
 
 export type ContextItem =
   | { kind: 'selection'; id: string; text: string; app: string }
-  | { kind: 'screenshot'; id: string; mediaType: 'image/png'; base64: string; width: number; height: number }
+  | { kind: 'screenshot'; id: string; mediaType: 'image/png' | 'image/jpeg'; base64: string; width: number; height: number; /** Set when the image was attached as a file. */ name?: string }
+  /** A file attached in the bar: copied into Orbit's attachments folder, text pulled out up front. */
+  | { kind: 'file'; id: string; name: string; path: string; size: number; text: string; chars: number }
   | { kind: 'window'; id: string; app: string; title: string }
   | { kind: 'url'; id: string; url: string }
 
@@ -66,6 +68,14 @@ export interface OrbitApi {
   copy(text: string): void
   replaceSelection(text: string): Promise<void>
   requestScreenshot(): void
+  /** Attach files by path (drag and drop). Unreadable ones come back in errors. */
+  attachPaths(paths: string[]): Promise<{ items: ContextItem[]; errors: string[] }>
+  /** Attach pasted data that has no path on disk (e.g. an image copied from a browser). */
+  attachData(name: string, data: Uint8Array): Promise<{ items: ContextItem[]; errors: string[] }>
+  /** Keeps the bar open while a file picker is up (it would hide on blur otherwise). */
+  keepOpen(on: boolean): void
+  /** Path of a dropped File (Electron removed File.path). */
+  pathForFile(file: File): string
   resize(height: number): void
   openDashboard(page?: 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'settings'): void
   // snip overlay

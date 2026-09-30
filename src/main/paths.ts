@@ -11,6 +11,7 @@ export const paths = {
   audit: join(dataDir, 'logs', 'audit.jsonl'),
   persona: join(dataDir, 'persona.md'),
   files: join(dataDir, 'files'),
+  attachments: join(dataDir, 'attachments'),
   // Large downloaded models; overridable so test profiles can share them.
   models: process.env.ORBIT_MODELS_DIR ?? join(dataDir, 'models')
 }

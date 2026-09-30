@@ -15,7 +15,7 @@ import { getConversation } from './core/history'
 import { setMemorySuggestionPresenter } from './core/tools/builtins/suggest'
 import { addMemory } from './core/memory'
 import { Speaker, stopSpeechServer, warmUpSpeech } from './voice/speech'
-import { bar, createBar, hideBar, resizeBar, sendToBar, setBarBlurHandler, showBar } from './windows/bar'
+import { bar, createBar, hideBar, resizeBar, sendToBar, setBarBlurHandler, setBarKeepOpen, showBar } from './windows/bar'
 import { bindHotkeys } from './os/hotkeys'
 import { createTray } from './os/tray'
 import { currentSelection, startSelectionHook, stopSelectionHook } from './os/selection'
@@ -32,6 +32,7 @@ import { recentChanges, undoChange } from './core/journal'
 import { z } from 'zod'
 import { browserUrl, startBrowserUrlHelper, stopBrowserUrlHelper } from './os/browserUrl'
 import { registerDashboardIpc, setVoiceInstaller } from './dashboardIpc'
+import { attachData, attachPaths, pruneAttachments } from './core/attachments'
 import { claudeStatus, runChecks } from './system/health'
 import { openDashboard } from './windows/dashboard'
 import { pasteInto } from './os/writeback'
@@ -267,6 +268,9 @@ function registerIpc(): void {
   ipcMain.on('bar:copy', (_e, text: string) => void clipboard.writeText(text))
   ipcMain.handle('bar:replace', (_e, text: string) => pasteInto(prevWindow, text, hideBar))
   ipcMain.on('bar:screenshot', () => void onScreenshot())
+  ipcMain.handle('bar:attach', (_e, files: string[]) => attachPaths(files))
+  ipcMain.handle('bar:attach-data', (_e, name: string, data: Uint8Array) => attachData(name, data))
+  ipcMain.on('bar:keep-open', (_e, on: boolean) => setBarKeepOpen(on))
   ipcMain.on('bar:resize', (_e, h: number) => resizeBar(h))
   ipcMain.on('bar:dashboard', (_e, page?: DashPage) => {
     hideBar()
@@ -276,6 +280,7 @@ function registerIpc(): void {
 
 app.whenReady().then(() => {
   ensureDataDirs()
+  pruneAttachments()
   settings.load()
   settings.watch()
   settings.on('change', () => {
