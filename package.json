@@ -30,6 +30,7 @@
     "quickjs-emscripten-core": "0.32.0",
     "selection-hook": "2.1.1",
     "sherpa-onnx-node": "1.13.8",
+    "unpdf": "1.8.1",
     "yaml": "2.9.1",
     "zod": "4.6.5"
   },

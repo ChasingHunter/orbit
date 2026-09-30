@@ -69,6 +69,13 @@ export const Settings = z.object({
     })
     .prefault({}),
 
+  files: z
+    .object({
+      /** Folders read_file and list_folder may read. %DOWNLOADS%, %DESKTOP%, %DOCUMENTS% and ~ work. */
+      allowedFolders: z.array(z.string()).default(['%DOWNLOADS%', '%DESKTOP%'])
+    })
+    .prefault({}),
+
   ui: z
     .object({
       barPosition: z.enum(['cursor', 'center']).default('center'),

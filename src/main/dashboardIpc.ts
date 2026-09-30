@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron'
+import { dialog, ipcMain, shell } from 'electron'
 import type { DashSettings, MemoryKind } from '@shared/dash'
 import { dataDir, paths } from './paths'
 import { settings } from './settingsStore'
@@ -21,7 +21,7 @@ import type { WorkflowInfo } from '@shared/dash'
 import { toValidYaml } from './workflows/validate'
 import { allTools } from './core/tools/registry'
 
-type SettingsPatch = { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine'] }
+type SettingsPatch = { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[] }
 
 export function registerDashboardIpc(): void {
   integrations.on('change', () => notifyDashboard('integrations'))
@@ -124,14 +124,20 @@ export function registerDashboardIpc(): void {
       providers: Object.keys(settings.current.providers),
       voiceEngine: settings.current.voice.engine,
       voiceModelInstalled: isModelInstalled(),
-      hotkeys: settings.current.hotkeys
+      hotkeys: settings.current.hotkeys,
+      allowedFolders: settings.current.files.allowedFolders
     })
   )
   ipcMain.handle('dash:settings-update', (_e, patch: SettingsPatch) => {
     settings.update((d) => {
       if (patch.models) Object.assign(d.models, patch.models)
       if (patch.voiceEngine) d.voice.engine = patch.voiceEngine
+      if (patch.allowedFolders) d.files.allowedFolders = patch.allowedFolders
     })
+  })
+  ipcMain.handle('dash:pick-folder', async () => {
+    const r = await dialog.showOpenDialog({ properties: ['openDirectory'] })
+    return r.canceled ? null : r.filePaths[0]
   })
   ipcMain.handle('dash:open', (_e, what: 'settings' | 'data' | 'files' | 'integrations') => {
     const target = { settings: paths.settings, data: dataDir, files: paths.files, integrations: integrationsFile }[what]

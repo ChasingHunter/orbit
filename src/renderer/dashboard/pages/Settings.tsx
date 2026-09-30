@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Download, FileCog, FolderOpen } from 'lucide-react'
+import { Download, FileCog, FolderOpen, FolderPlus, X } from 'lucide-react'
 import type { DashSettings } from '@shared/dash'
 import { Button, Card, dash, inputClass, PageHeader, selectClass } from '../ui'
 
@@ -61,6 +61,31 @@ export function SettingsPage(): React.JSX.Element {
               <Download size={14} /> The speech model downloads the first time you talk (482 MB).
             </span>
           )}
+        </div>
+      </Section>
+
+      <Section title="Folders Orbit can read" hint="Orbit can read files here (read-only), for example to summarise a PDF or react to one landing in a workflow. It can't read files anywhere else.">
+        <div className="space-y-1.5">
+          {s.allowedFolders.map((f) => (
+            <div key={f} className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-black/20 px-3 py-1.5 text-sm text-zinc-200">
+              <FolderOpen size={14} className="shrink-0 text-zinc-500" />
+              <span className="flex-1 truncate">{f.replace('%DOWNLOADS%', 'Downloads').replace('%DESKTOP%', 'Desktop').replace('%DOCUMENTS%', 'Documents')}</span>
+              <Button variant="danger" icon={X} title="Remove" onClick={() => void dash.updateSettings({ allowedFolders: s.allowedFolders.filter((x) => x !== f) })} />
+            </div>
+          ))}
+          {!s.allowedFolders.length && <p className="text-sm text-zinc-500">None. Orbit can't read any of your files.</p>}
+        </div>
+        <div className="mt-3">
+          <Button
+            icon={FolderPlus}
+            onClick={() =>
+              void dash.pickFolder().then((f) => {
+                if (f && !s.allowedFolders.includes(f)) void dash.updateSettings({ allowedFolders: [...s.allowedFolders, f] })
+              })
+            }
+          >
+            Add a folder
+          </Button>
         </div>
       </Section>
 

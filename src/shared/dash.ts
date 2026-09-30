@@ -43,6 +43,8 @@ export type DashSettings = {
   voiceEngine: 'local' | 'wispr' | 'off'
   voiceModelInstalled: boolean
   hotkeys: { bar: string; screenshot: string; panic: string }
+  /** As written in settings (may use %DOWNLOADS% etc.). */
+  allowedFolders: string[]
 }
 
 export type WorkflowRunItem = {
@@ -120,6 +122,7 @@ export interface DashApi {
   workflowSave(previousName: string | null, data: unknown): Promise<string>
   tools(): Promise<{ name: string; description: string; sideEffect: boolean }[]>
   settings(): Promise<DashSettings>
-  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine'] }): Promise<void>
+  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[] }): Promise<void>
+  pickFolder(): Promise<string | null>
   openPath(what: 'settings' | 'data' | 'files' | 'integrations'): Promise<void>
 }

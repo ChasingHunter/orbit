@@ -66,6 +66,7 @@ const dash: DashApi = {
   tools: () => ipcRenderer.invoke('dash:tools'),
   settings: () => ipcRenderer.invoke('dash:settings'),
   updateSettings: (patch) => ipcRenderer.invoke('dash:settings-update', patch),
+  pickFolder: () => ipcRenderer.invoke('dash:pick-folder'),
   openPath: (what) => ipcRenderer.invoke('dash:open', what)
 }
 
