@@ -7,7 +7,7 @@ import { isLocalModel, resolveModel } from '../runners'
 import type { RunnerSession } from '../runners/types'
 import { runnableTools } from './tools/registry'
 import { searchMemories, type Memory } from './memory'
-import { addMessage, createConversation } from './history'
+import { addMessage, createConversation, getMessages } from './history'
 import type { RunnableTool } from './tools/types'
 
 type Emit = (turnId: string, event: AgentEvent) => void
@@ -64,6 +64,8 @@ export class Conversation {
   private abort: AbortController | undefined
   private turnId = ''
   private conversationId: string | undefined
+  /** Transcript of an earlier conversation, sent along with the next message after resuming. */
+  private carryOver = ''
 
   constructor(private emit: Emit) {}
 
@@ -118,13 +120,17 @@ export class Conversation {
     const conversationId = this.conversationId
     addMessage(conversationId, 'user', text)
     const selection = context.find((c) => c.kind === 'selection')
+    const carry = this.carryOver
+    this.carryOver = ''
     const memories = searchMemories(`${text} ${selection?.kind === 'selection' ? selection.text.slice(0, 300) : ''}`, 5, isLocalModel(modelRef))
 
     void (async () => {
       let answer = ''
       try {
         const session = this.ensureSession()
-        for await (const ev of session.send(composeTurn(text, context, memories), abort.signal)) {
+        const turn = composeTurn(text, context, memories)
+        if (carry) turn.text = `<earlier_conversation note="the user reopened this chat; continue from it">\n${carry}\n</earlier_conversation>\n\n${turn.text}`
+        for await (const ev of session.send(turn, abort.signal)) {
           if (ev.type === 'text') answer += ev.delta
           this.emit(turnId, ev)
           if (ev.type === 'done') break
@@ -142,6 +148,17 @@ export class Conversation {
 
   cancel(): void {
     this.abort?.abort()
+  }
+
+  /** Reopens a saved conversation: new messages are added to it and the model sees what came before. */
+  resume(conversationId: string): { role: 'user' | 'assistant'; text: string }[] {
+    this.reset()
+    const messages = getMessages(conversationId)
+    this.conversationId = conversationId
+    let transcript = messages.map((m) => `${m.role === 'user' ? 'User' : 'You'}: ${m.text}`).join('\n\n')
+    if (transcript.length > 24_000) transcript = '…' + transcript.slice(-24_000)
+    this.carryOver = transcript
+    return messages.map((m) => ({ role: m.role, text: m.text }))
   }
 
   reset(): void {

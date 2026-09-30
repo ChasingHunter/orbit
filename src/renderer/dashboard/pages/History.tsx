@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, History as HistoryIcon, Trash2 } from 'lucide-react'
+import { ArrowLeft, History as HistoryIcon, MessageSquare, Trash2 } from 'lucide-react'
 import type { ConversationItem, MessageItem } from '@shared/dash'
 import { Markdown } from '../../bar/Markdown'
 import { Button, Card, dash, Empty, PageHeader, timeAgo } from '../ui'
@@ -55,7 +55,15 @@ function Conversation({ item, onBack }: { item: ConversationItem; onBack: () => 
           History
         </Button>
       </div>
-      <PageHeader title={item.title} subtitle={`${new Date(item.created_at).toLocaleString()} · ${item.model}`} />
+      <PageHeader
+        title={item.title}
+        subtitle={`${new Date(item.created_at).toLocaleString()} · ${item.model}`}
+        actions={
+          <Button variant="primary" icon={MessageSquare} onClick={() => dash.continueConversation(item.id)}>
+            Continue in the bar
+          </Button>
+        }
+      />
       <div className="space-y-5">
         {messages.map((m) =>
           m.role === 'user' ? (

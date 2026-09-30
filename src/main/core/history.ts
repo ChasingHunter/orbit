@@ -26,6 +26,10 @@ export function getMessages(conversationId: string): MessageRow[] {
   return getDb().prepare('SELECT id, role, text, created_at FROM messages WHERE conversation_id = ? ORDER BY id').all(conversationId) as MessageRow[]
 }
 
+export function getConversation(id: string): ConversationRow | undefined {
+  return getDb().prepare('SELECT * FROM conversations WHERE id = ?').get(id) as ConversationRow | undefined
+}
+
 export function deleteConversation(id: string): void {
   getDb().prepare('DELETE FROM conversations WHERE id = ?').run(id)
 }

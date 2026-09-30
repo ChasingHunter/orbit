@@ -10,6 +10,7 @@ import {
   Globe,
   LayoutDashboard,
   Loader2,
+  MessageCircleQuestion,
   Mic,
   Plus,
   ScanText,
@@ -24,6 +25,7 @@ import {
 import type { ApprovalRequest, BarEvent, ContextItem } from '@shared/types'
 
 type QuickAction = Extract<BarEvent, { type: 'open' }>['quickActions'][number]
+type Question = Extract<BarEvent, { type: 'question' }>['question']
 import { Markdown } from './Markdown'
 import { Recorder } from './recorder'
 
@@ -42,6 +44,7 @@ export function App(): React.JSX.Element {
   const [context, setContext] = useState<ContextItem[]>([])
   const [entries, setEntries] = useState<Entry[]>([])
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([])
+  const [questions, setQuestions] = useState<Question[]>([])
   const [input, setInput] = useState('')
   const [listening, setListening] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -113,6 +116,19 @@ export function App(): React.JSX.Element {
           break
         case 'approval':
           setApprovals((a) => [...a, ev.request])
+          break
+        case 'question':
+          setQuestions((q) => [...q, ev.question])
+          break
+        case 'restore':
+          setEntries([
+            { kind: 'notice', id: 'restored', level: 'info', text: `Continuing "${ev.title}"` },
+            ...ev.messages.map((m, i): Entry =>
+              m.role === 'user'
+                ? { kind: 'user', id: `r-u-${i}`, text: m.text, context: [] }
+                : { kind: 'assistant', id: `r-a-${i}`, text: m.text, tools: [], done: true, canPaste: false }
+            )
+          ])
           break
         case 'notice':
           setEntries((all) => [
@@ -243,7 +259,7 @@ export function App(): React.JSX.Element {
     setApprovals((a) => a.filter((r) => r.id !== id))
   }
 
-  const hasThread = entries.length > 0 || approvals.length > 0
+  const hasThread = entries.length > 0 || approvals.length > 0 || questions.length > 0
 
   return (
     <div ref={rootRef} className="p-2">
@@ -266,6 +282,16 @@ export function App(): React.JSX.Element {
             ))}
             {approvals.map((r) => (
               <ApprovalCard key={r.id} req={r} onDecide={decide} />
+            ))}
+            {questions.map((q) => (
+              <QuestionCard
+                key={q.id}
+                q={q}
+                onAnswer={(text) => {
+                  api.answer(q.id, text)
+                  setQuestions((all) => all.filter((x) => x.id !== q.id))
+                }}
+              />
             ))}
           </div>
         )}
@@ -527,6 +553,44 @@ function CopyButton({ text }: { text: string }): React.JSX.Element {
     >
       {copied ? 'Copied' : 'Copy'}
     </ActionButton>
+  )
+}
+
+function QuestionCard(props: { q: Question; onAnswer: (text: string) => void }): React.JSX.Element {
+  const [text, setText] = useState('')
+  return (
+    <div className="rounded-xl border border-sky-400/25 bg-sky-400/[0.05] p-3" data-testid="question">
+      <div className="flex items-center gap-2 text-[11px] font-medium tracking-wide text-sky-300">
+        <MessageCircleQuestion size={14} /> QUESTION · {props.q.from}
+      </div>
+      <div className="mt-1.5 text-sm text-zinc-100">{props.q.question}</div>
+      {props.q.options.length > 0 && (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {props.q.options.map((o) => (
+            <button key={o} onClick={() => props.onAnswer(o)} className="rounded-lg border border-sky-400/30 px-2.5 py-1 text-xs text-sky-100 hover:bg-sky-400/15">
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+      <form
+        className="mt-2.5 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (text.trim()) props.onAnswer(text.trim())
+        }}
+      >
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Or type an answer"
+          className="flex-1 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1 text-xs text-zinc-100 outline-none focus:border-sky-400/60"
+        />
+        <button type="submit" className="rounded-lg bg-sky-500 px-3 py-1 text-xs text-white hover:bg-sky-400">
+          Send
+        </button>
+      </form>
+    </div>
   )
 }
 

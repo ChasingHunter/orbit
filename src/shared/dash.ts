@@ -105,6 +105,8 @@ export interface DashApi {
   conversations(): Promise<ConversationItem[]>
   messages(conversationId: string): Promise<MessageItem[]>
   deleteConversation(id: string): Promise<void>
+  /** Reopens the conversation in the bar. */
+  continueConversation(id: string): void
   tasks(): Promise<TaskItem[]>
   cancelTask(id: string): Promise<void>
   workflows(): Promise<{ workflows: WorkflowInfo[]; templates: TemplateInfo[] }>

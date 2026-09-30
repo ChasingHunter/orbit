@@ -9,6 +9,8 @@ import { settings } from './settingsStore'
 import { setSecret } from './secrets'
 import { Conversation } from './core/conversation'
 import { denyAllApprovals, resolveApproval, setApprovalPresenter } from './core/approvals'
+import { answerQuestion, setQuestionPresenter } from './core/questions'
+import { getConversation } from './core/history'
 import { bar, createBar, hideBar, resizeBar, sendToBar, setBarBlurHandler, showBar } from './windows/bar'
 import { bindHotkeys } from './os/hotkeys'
 import { createTray } from './os/tray'
@@ -162,6 +164,16 @@ function registerIpc(): void {
   ipcMain.on('bar:cancel', () => conversation.cancel())
   ipcMain.on('bar:new', () => conversation.reset())
   ipcMain.on('bar:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
+  ipcMain.on('bar:answer', (_e, id: string, text: string) => answerQuestion(id, text))
+  ipcMain.on('dash:continue', (_e, conversationId: string) => {
+    const conv = getConversation(conversationId)
+    if (!conv) return
+    const messages = conversation.resume(conversationId)
+    sendToBar({ type: 'reset' })
+    sendToBar({ type: 'open', context: [], autoSubmitMs: null, quickActions: settings.current.quickActions })
+    sendToBar({ type: 'restore', title: conv.title, messages })
+    showBar()
+  })
   ipcMain.on('bar:voice-toggle', () => void voice.toggle())
   ipcMain.on('bar:voice-ended', () => voice.ended())
   ipcMain.handle('stt:transcribe', async (_e, samples: Float32Array) => {
@@ -206,6 +218,11 @@ app.whenReady().then(() => {
       new Notification({ title: 'Missed reminder', body: `${text} (was due ${missedAt?.toLocaleString()})` }).show()
     }
   )
+  setQuestionPresenter((question) => {
+    sendToBar({ type: 'question', question })
+    if (!bar().isVisible()) showBar()
+    new Notification({ title: 'Orbit has a question', body: question.question }).show()
+  })
   setApprovalPresenter((request) => {
     sendToBar({ type: 'approval', request })
     if (!bar().isVisible()) showBar()
