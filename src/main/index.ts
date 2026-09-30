@@ -18,6 +18,7 @@ import { VoiceController } from './voice/controller'
 import { transcribe, warmUp } from './voice/localStt'
 import { integrations } from './integrations/manager'
 import { tasks } from './core/tasks'
+import { scheduler } from './core/scheduler'
 import { registerDashboardIpc } from './dashboardIpc'
 import { openDashboard } from './windows/dashboard'
 import { pasteInto } from './os/writeback'
@@ -169,6 +170,18 @@ app.whenReady().then(() => {
   registerDashboardIpc()
   void integrations.startAll()
   tasks.markInterrupted()
+  scheduler.register(
+    'reminder',
+    (s) => {
+      const { text } = JSON.parse(s.payload) as { text: string }
+      new Notification({ title: 'Reminder', body: text }).show()
+      if (bar().isVisible()) sendToBar({ type: 'notice', level: 'info', text: `Reminder: ${text}` })
+    },
+    (s, { missedAt }) => {
+      const { text } = JSON.parse(s.payload) as { text: string }
+      new Notification({ title: 'Missed reminder', body: `${text} (was due ${missedAt?.toLocaleString()})` }).show()
+    }
+  )
   setApprovalPresenter((request) => {
     sendToBar({ type: 'approval', request })
     if (!bar().isVisible()) showBar()
@@ -186,11 +199,12 @@ app.whenReady().then(() => {
   })
   if (process.env.ORBIT_E2E) {
     // Test hook for scripts/e2e.ts; never set in normal runs.
-    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard } })
+    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler } })
     return
   }
   startSelectionHook()
   rebindHotkeys()
+  scheduler.start()
   warmUp()
 })
 

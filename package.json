@@ -21,6 +21,7 @@
     "@modelcontextprotocol/sdk": "1.31.0",
     "@mozilla/readability": "0.6.0",
     "ai": "7.0.123",
+    "croner": "10.0.1",
     "koffi": "3.3.2",
     "linkedom": "0.18.13",
     "lucide-react": "1.49.0",
