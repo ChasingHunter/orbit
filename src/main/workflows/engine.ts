@@ -9,6 +9,14 @@ import { scheduler } from '../core/scheduler'
 import { localNow } from '../core/conversation'
 import { durationMs, stepKind, type Step, type Workflow } from './schema'
 import { workflowStore } from './store'
+import { openDashboard } from '../windows/dashboard'
+
+/** Notification that opens the Workflows page when clicked. */
+function notice(title: string, body: string): void {
+  const n = new Notification({ title, body })
+  n.on('click', () => openDashboard('workflows'))
+  n.show()
+}
 
 export type RunTrigger = 'schedule' | 'manual' | 'missed'
 export type RunStatus = 'running' | 'done' | 'failed' | 'cancelled'
@@ -166,15 +174,16 @@ class WorkflowEngine extends EventEmitter {
     const d = new Date()
     const ctx: Ctx = { steps: {}, input, date: d.toISOString().slice(0, 10), now: localNow(d), workflow: name }
     try {
-      const output = wf.prompt ? await this.runAgentic(wf, ctx, abort.signal) : await this.runSteps(wf, id, ctx, abort.signal)
+      const last = wf.prompt ? await this.runAgentic(wf, ctx, abort.signal) : await this.runSteps(wf, id, ctx, abort.signal)
+      const output = wf.output ? render(wf.output, ctx) : last
       this.finish(id, 'done', output)
-      if (trigger !== 'manual') new Notification({ title: `${name} finished`, body: output.replace(/[#*_`]/g, '').slice(0, 180) }).show()
+      if (trigger !== 'manual') notice(`${name} finished`, output.replace(/[#*_`]/g, '').slice(0, 180))
     } catch (err) {
       const stop = abort.signal.aborted ? 'cancelled' : err instanceof StepError ? err.stop : 'failed'
       const where = err instanceof StepError ? ` at ${err.stepId}` : ''
       const message = (err as Error).message
       this.finish(id, stop, null, `${stop === 'cancelled' ? 'Stopped' : 'Failed'}${where}: ${message}`)
-      if (stop === 'failed') new Notification({ title: `${name} failed${where}`, body: message.slice(0, 180) }).show()
+      if (stop === 'failed') notice(`${name} failed${where}`, message.slice(0, 180))
     } finally {
       this.running.delete(id)
     }

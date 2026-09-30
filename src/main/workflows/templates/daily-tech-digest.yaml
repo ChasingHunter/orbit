@@ -1,0 +1,59 @@
+name: daily-tech-digest
+description: Big tech, AI, startups and the best new products from around the world, every morning
+trigger: { cron: "30 8 * * *" }
+missed: run
+model: chat
+output: "{{steps.write.output}}"
+steps:
+  - id: hn
+    tool: read_feed
+    args: { url: "https://news.ycombinator.com/rss", limit: 30 }
+    retries: 1
+  - id: tech
+    tool: read_feed
+    args: { url: "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en", limit: 40, sinceHours: 30 }
+    retries: 1
+  - id: ai
+    tool: read_feed
+    args: { url: "https://news.google.com/rss/search?q=artificial+intelligence+when:1d&hl=en-US&gl=US&ceid=US:en", limit: 40 }
+    retries: 1
+  - id: startups
+    tool: read_feed
+    args: { url: "https://news.google.com/rss/search?q=startup+funding+when:1d&hl=en-US&gl=US&ceid=US:en", limit: 30 }
+    retries: 1
+  - id: techcrunch
+    tool: read_feed
+    args: { url: "https://techcrunch.com/feed/", limit: 20, sinceHours: 30 }
+    retries: 1
+  - id: products
+    tool: read_feed
+    args: { url: "https://www.producthunt.com/feed", limit: 20 }
+    retries: 1
+  - id: write
+    agent: |
+      Write today's tech digest from the feeds below. Cover the whole world, not only the US.
+
+      Start with "**Top of the day:**" and the 2 or 3 stories that matter most, in one or two sentences.
+      Then these sections, 3 to 6 items each, most important first:
+      ## Big tech
+      ## AI
+      ## Startups & funding
+      ## Worth trying
+      (new products from Product Hunt that look genuinely useful, with what they do in plain words)
+      ## From Hacker News
+      (what developers are talking about)
+
+      One line per item: a short plain summary, why it matters in a few words, then the link in markdown.
+      Merge the same story from different feeds into one line. Skip press-release fluff, listicles,
+      and rumours without a named source. Leave a section out if nothing in it is worth reading.
+      Plain markdown, no intro or sign-off.
+    input: |
+      {{steps.tech.output}}
+      {{steps.ai.output}}
+      {{steps.startups.output}}
+      {{steps.techcrunch.output}}
+      {{steps.products.output}}
+      {{steps.hn.output}}
+  - id: save
+    tool: save_file
+    args: { name: "digests/tech-{{date}}.md", content: "# Tech digest, {{date}}\n\n{{steps.write.output}}\n" }

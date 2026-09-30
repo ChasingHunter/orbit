@@ -72,6 +72,8 @@ export const Workflow = z
     /** What to do when the PC was off at the scheduled time. */
     missed: z.enum(['ask', 'run', 'skip']).default('ask'),
     model: z.string().default('chat').describe('quick, chat, research, or provider:model'),
+    /** What the run returns (and shows in notifications). Defaults to the last step's output. */
+    output: z.string().optional(),
     /** Agentic workflows: one prompt, the model decides which tools to use. */
     prompt: z.string().optional(),
     tools: z.array(z.string()).default([]),

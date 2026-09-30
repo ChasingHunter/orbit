@@ -52,7 +52,7 @@ export interface OrbitApi {
   replaceSelection(text: string): Promise<void>
   requestScreenshot(): void
   resize(height: number): void
-  openDashboard(page?: 'tasks' | 'integrations' | 'memory' | 'history' | 'settings'): void
+  openDashboard(page?: 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'settings'): void
   // snip overlay
   snipDone(rect: { x: number; y: number; width: number; height: number } | null): void
   onSnipImage(cb: (dataUrl: string) => void): void

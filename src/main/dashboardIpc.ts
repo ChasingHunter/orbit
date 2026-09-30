@@ -11,6 +11,12 @@ import { deleteConversation, getMessages, listConversations } from './core/histo
 import { tasks } from './core/tasks'
 import { isModelInstalled } from './voice/localStt'
 import { notifyDashboard } from './windows/dashboard'
+import { workflowStore } from './workflows/store'
+import { workflows } from './workflows/engine'
+import { TEMPLATES } from './workflows/templates'
+import { describeCron } from './workflows/describe'
+import { scheduler } from './core/scheduler'
+import type { WorkflowInfo } from '@shared/dash'
 
 type SettingsPatch = { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine'] }
 
@@ -56,6 +62,40 @@ export function registerDashboardIpc(): void {
   ipcMain.handle('dash:conversation-delete', (_e, id: string) => {
     deleteConversation(id)
     notifyDashboard('history')
+  })
+
+  workflows.on('change', () => notifyDashboard('workflows'))
+  ipcMain.handle('dash:workflows', () => {
+    const list: WorkflowInfo[] = workflowStore.list().map((l) => {
+      const wf = l.workflow
+      if (!wf) return { file: l.file, name: l.file.replace(/\.ya?ml$/i, ''), description: '', enabled: false, schedule: 'Invalid', nextRun: null, stepCount: 0, error: l.error }
+      const s = scheduler.get(`wf:${wf.name}`)
+      const next = s ? scheduler.nextRunOf(s) : null
+      return {
+        file: l.file,
+        name: wf.name,
+        description: wf.description,
+        enabled: wf.enabled,
+        schedule: 'cron' in wf.trigger ? describeCron(wf.trigger.cron) : 'When you run it',
+        nextRun: wf.enabled && next ? next.toISOString() : null,
+        stepCount: wf.prompt ? 1 : wf.steps.length,
+        lastRun: workflows.runs(wf.name, 1)[0]
+      }
+    })
+    const names = new Set(list.map((w) => w.name))
+    return { workflows: list, templates: TEMPLATES.map((t) => ({ id: t.id, title: t.title, summary: t.summary, installed: names.has(t.id) })) }
+  })
+  ipcMain.handle('dash:workflow-runs', (_e, name: string) => workflows.runs(name, 30))
+  ipcMain.handle('dash:workflow-steps', (_e, runId: string) => workflows.steps(runId))
+  ipcMain.handle('dash:workflow-run', (_e, name: string) => void workflows.run(name, 'manual').catch(() => {}))
+  ipcMain.handle('dash:workflow-cancel', (_e, runId: string) => workflows.cancel(runId))
+  ipcMain.handle('dash:workflow-enabled', (_e, name: string, enabled: boolean) => workflowStore.setEnabled(name, enabled))
+  ipcMain.handle('dash:workflow-delete', (_e, name: string) => workflowStore.remove(name))
+  ipcMain.handle('dash:workflow-edit', (_e, name: string) => shell.openPath(workflowStore.fileOf(name)))
+  ipcMain.handle('dash:template-add', (_e, id: string) => {
+    const t = TEMPLATES.find((x) => x.id === id)
+    if (!t) throw new Error(`Unknown template ${id}`)
+    workflowStore.save(t.yaml)
   })
 
   ipcMain.handle('dash:tasks', () => tasks.list())

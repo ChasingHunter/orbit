@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Brain, History, ListChecks, Plug, Settings as SettingsIcon, type LucideIcon } from 'lucide-react'
+import { Brain, History, ListChecks, Plug, Settings as SettingsIcon, Workflow, type LucideIcon } from 'lucide-react'
 import type { DashPage } from '@shared/dash'
 import { dash } from './ui'
 import { TasksPage } from './pages/Tasks'
+import { WorkflowsPage } from './pages/Workflows'
 import { IntegrationsPage } from './pages/Integrations'
 import { MemoryPage } from './pages/Memory'
 import { HistoryPage } from './pages/History'
@@ -10,6 +11,7 @@ import { SettingsPage } from './pages/Settings'
 
 const NAV: { id: DashPage; label: string; icon: LucideIcon }[] = [
   { id: 'tasks', label: 'Tasks', icon: ListChecks },
+  { id: 'workflows', label: 'Workflows', icon: Workflow },
   { id: 'integrations', label: 'Integrations', icon: Plug },
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'history', label: 'History', icon: History },
@@ -60,6 +62,7 @@ export function App(): React.JSX.Element {
       <main className="min-w-0 flex-1 overflow-y-auto px-10 py-8" data-page={page}>
         <div className="mx-auto max-w-4xl">
           {page === 'tasks' && <TasksPage />}
+          {page === 'workflows' && <WorkflowsPage />}
           {page === 'integrations' && <IntegrationsPage />}
           {page === 'memory' && <MemoryPage />}
           {page === 'history' && <HistoryPage />}
