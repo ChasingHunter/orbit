@@ -22,6 +22,10 @@ export interface OrbitTool<S extends z.ZodRawShape = z.ZodRawShape> {
   selfApproves?: boolean
   /** One-line summary shown on the approval card. */
   describe?: (input: z.infer<z.ZodObject<S>>) => string
+  /** Readable detail for the approval card (a list of renames, the text being replaced), shown instead of the raw input. */
+  preview?: (input: z.infer<z.ZodObject<S>>) => string
+  /** Hidden from the model when this returns false, so unused tools cost no tokens. */
+  available?: () => boolean
   run: (input: z.infer<z.ZodObject<S>>, ctx: ToolContext) => Promise<string>
 }
 

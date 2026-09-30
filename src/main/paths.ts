@@ -12,6 +12,8 @@ export const paths = {
   persona: join(dataDir, 'persona.md'),
   files: join(dataDir, 'files'),
   attachments: join(dataDir, 'attachments'),
+  /** Backups of your files taken before Orbit changes them. */
+  snapshots: join(dataDir, 'snapshots'),
   // Large downloaded models; overridable so test profiles can share them.
   models: process.env.ORBIT_MODELS_DIR ?? join(dataDir, 'models')
 }

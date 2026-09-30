@@ -33,6 +33,7 @@ import { z } from 'zod'
 import { browserUrl, startBrowserUrlHelper, stopBrowserUrlHelper } from './os/browserUrl'
 import { registerDashboardIpc, setVoiceInstaller } from './dashboardIpc'
 import { attachData, attachPaths, pruneAttachments } from './core/attachments'
+import { pruneSnapshots } from './core/userFiles'
 import { modelChoices } from './runners/choices'
 import { claudeStatus, runChecks } from './system/health'
 import { openDashboard } from './windows/dashboard'
@@ -285,6 +286,7 @@ function registerIpc(): void {
 app.whenReady().then(() => {
   ensureDataDirs()
   pruneAttachments()
+  pruneSnapshots()
   settings.load()
   settings.watch()
   settings.on('change', () => {

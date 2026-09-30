@@ -26,6 +26,8 @@ export type ApprovalRequest = {
   tool: string
   title: string
   input: unknown
+  /** Readable detail shown instead of the raw input. */
+  preview?: string
   /** Offer "Allow for this chat" (not for workflow reviews). */
   allowChat?: boolean
 }

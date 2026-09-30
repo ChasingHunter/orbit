@@ -48,9 +48,18 @@ async function invoke(tool: OrbitTool, rawInput: unknown, opts: CallOptions): Pr
   let decision: 'allowed' | 'approved' = preApproved ? 'approved' : 'allowed'
   if (policyFor(tool) === 'ask' && !preApproved && !tool.selfApproves && !isAllowedThisChat(tool.name)) {
     const title = tool.describe?.(input) ?? tool.name
+    let preview: string | undefined
+    try {
+      preview = tool.preview?.(input)
+    } catch (err) {
+      // A preview that can't be built (file missing, path refused) means the call would fail too.
+      const output = err instanceof Error ? err.message : String(err)
+      audit({ tool: tool.name, input, decision: 'allowed', ok: false, output })
+      return { output, isError: true }
+    }
     // Workflows run without a chat to remember "allow for this chat" in, so they only get yes/no.
     const answer = await requestDecision(
-      { tool: tool.name, title: opts.origin ? `${opts.origin}: ${title}` : title, input, allowChat: !opts.origin },
+      { tool: tool.name, title: opts.origin ? `${opts.origin}: ${title}` : title, input, preview, allowChat: !opts.origin },
       opts.signal
     )
     if (answer === 'chat') allowForThisChat(tool.name)
@@ -95,7 +104,7 @@ export function runnableTools(
   only?: string[]
 ): RunnableTool[] {
   return allTools()
-    .filter((t) => policyFor(t) !== 'never' && !exclude.includes(t.name) && (!only || only.map(normalizeToolName).includes(t.name)))
+    .filter((t) => policyFor(t) !== 'never' && (t.available?.() ?? true) && !exclude.includes(t.name) && (!only || only.map(normalizeToolName).includes(t.name)))
     .map((tool) => ({
       name: tool.name,
       description: tool.description,

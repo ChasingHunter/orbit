@@ -10,7 +10,7 @@ import { integrationsFile } from './integrations/config'
 import { PRESETS } from './integrations/presets'
 import { listMemories } from './core/memory'
 import { addMemoryTracked, deleteMemoryTracked, removeWorkflowTracked, saveWorkflowTracked, updateMemoryTracked } from './core/changes'
-import { journalEvents, recentChanges, undoChange } from './core/journal'
+import { journalEvents, recentChanges, undoChange, UndoConflict } from './core/journal'
 import { deleteConversation, getMessages, listConversations } from './core/history'
 import { tasks } from './core/tasks'
 import { isModelInstalled } from './voice/localStt'
@@ -23,6 +23,7 @@ import { describeTrigger } from './workflows/describe'
 import { triggers } from './workflows/triggers'
 import { scheduler } from './core/scheduler'
 import type { PermissionsInfo, UsageInfo, WorkflowInfo } from '@shared/dash'
+import { snapshotBytes } from './core/userFiles'
 import { bundledClaudeVersion, findInstalledClaude, installedClaudeVersion, openUrl, runChecks, signInToClaude } from './system/health'
 import { levelDefault, policyOf } from './core/permissions'
 import { backgroundTokensToday, usageSummary } from './core/usage'
@@ -33,6 +34,7 @@ type SettingsPatch = {
   models?: Partial<DashSettings['models']>
   voiceEngine?: DashSettings['voiceEngine']
   allowedFolders?: string[]
+  writableFolders?: string[]
   voiceMode?: DashSettings['voiceMode']
   startWithWindows?: boolean
   autoUpdate?: boolean
@@ -191,7 +193,14 @@ export function registerDashboardIpc(): void {
     notifyDashboard('workflows')
   })
   ipcMain.handle('dash:changes', () => recentChanges(50))
-  ipcMain.handle('dash:undo', (_e, id: number) => undoChange(id))
+  ipcMain.handle('dash:undo', (_e, id: number, force?: boolean) => {
+    try {
+      return { done: undoChange(id, !!force) }
+    } catch (err) {
+      if (err instanceof UndoConflict) return { conflict: err.message }
+      throw err
+    }
+  })
 
   ipcMain.handle('dash:checks', () => runChecks())
   ipcMain.handle('dash:fix-check', async (_e, id: string) => {
@@ -222,6 +231,9 @@ export function registerDashboardIpc(): void {
       voiceModelInstalled: isModelInstalled(),
       hotkeys: settings.current.hotkeys,
       allowedFolders: settings.current.files.allowedFolders,
+      writableFolders: settings.current.files.writableFolders,
+      snapshotMb: Math.round(snapshotBytes() / 1e6),
+      snapshotDays: settings.current.files.snapshotDays,
       voiceMode: settings.current.voice.mode,
       startWithWindows: settings.current.ui.startWithWindows,
       autoUpdate: settings.current.ui.autoUpdate,
@@ -235,7 +247,11 @@ export function registerDashboardIpc(): void {
     settings.update((d) => {
       if (patch.models) Object.assign(d.models, patch.models)
       if (patch.voiceEngine) d.voice.engine = patch.voiceEngine
-      if (patch.allowedFolders) d.files.allowedFolders = patch.allowedFolders
+      if (patch.allowedFolders) {
+        d.files.allowedFolders = patch.allowedFolders
+        d.files.writableFolders = d.files.writableFolders.filter((f) => patch.allowedFolders!.includes(f))
+      }
+      if (patch.writableFolders) d.files.writableFolders = patch.writableFolders.filter((f) => d.files.allowedFolders.includes(f))
       if (patch.voiceMode) d.voice.mode = patch.voiceMode
       if (patch.startWithWindows !== undefined) d.ui.startWithWindows = patch.startWithWindows
       if (patch.autoUpdate !== undefined) d.ui.autoUpdate = patch.autoUpdate

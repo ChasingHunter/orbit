@@ -45,6 +45,11 @@ export type DashSettings = {
   hotkeys: { bar: string; screenshot: string; panic: string }
   /** As written in settings (may use %DOWNLOADS% etc.). */
   allowedFolders: string[]
+  /** Of allowedFolders, the ones Orbit may change files in. */
+  writableFolders: string[]
+  /** Space the backups of changed files take. */
+  snapshotMb: number
+  snapshotDays: number
   voiceMode: 'toggle' | 'hold'
   startWithWindows: boolean
   autoUpdate: boolean
@@ -173,15 +178,15 @@ export interface DashApi {
   fixCheck(id: string): Promise<void>
   saveSearchKey(key: string): Promise<void>
   changes(): Promise<ChangeItem[]>
-  /** Returns what was undone; throws if it can't be. */
-  undo(id: number): Promise<string>
+  /** Undoes a change. conflict: the file changed since; call again with force to go ahead. Throws if it can't be done. */
+  undo(id: number, force?: boolean): Promise<{ done: string } | { conflict: string }>
   permissions(): Promise<PermissionsInfo>
   setPermissionLevel(level: PermissionsInfo['level']): Promise<void>
   /** 'level' removes the override so the tool follows the level again. */
   setToolPolicy(name: string, policy: 'level' | 'ask' | 'always' | 'never'): Promise<void>
   setBudget(tokensPerDay: number): Promise<void>
   settings(): Promise<DashSettings>
-  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[]; voiceMode?: DashSettings['voiceMode']; startWithWindows?: boolean; autoUpdate?: boolean; speech?: Partial<DashSettings['speech']>; claudeExecutable?: 'bundled' | 'installed' }): Promise<void>
+  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[]; writableFolders?: string[]; voiceMode?: DashSettings['voiceMode']; startWithWindows?: boolean; autoUpdate?: boolean; speech?: Partial<DashSettings['speech']>; claudeExecutable?: 'bundled' | 'installed' }): Promise<void>
   /** Says a short sample with the current speech settings. */
   testSpeech(): Promise<void>
   /** Throws if another app already owns the combination. */

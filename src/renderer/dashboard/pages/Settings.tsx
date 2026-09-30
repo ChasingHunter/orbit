@@ -127,12 +127,26 @@ export function SettingsPage(): React.JSX.Element {
         </div>
       </Section>
 
-      <Section title="Folders Orbit can read" hint="Orbit can read files here (read-only), for example to summarise a PDF or react to one landing in a workflow. It can't read files anywhere else.">
+      <Section
+        title="Folders Orbit can use"
+        hint={`Orbit can read files here, for example to summarise a PDF or react to one landing in a workflow, and nowhere else. It only changes files in folders where you turn that on. Before any change, the old file is backed up (kept ${s.snapshotDays} days, using ${s.snapshotMb} MB now) and the change can be undone from Logs.`}
+      >
         <div className="space-y-1.5">
           {s.allowedFolders.map((f) => (
             <div key={f} className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-black/20 px-3 py-1.5 text-sm text-zinc-200">
               <FolderOpen size={14} className="shrink-0 text-zinc-500" />
               <span className="flex-1 truncate">{f.replace('%DOWNLOADS%', 'Downloads').replace('%DESKTOP%', 'Desktop').replace('%DOCUMENTS%', 'Documents')}</span>
+              <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={s.writableFolders.includes(f)}
+                  onChange={(e) =>
+                    void dash.updateSettings({ writableFolders: e.target.checked ? [...s.writableFolders, f] : s.writableFolders.filter((x) => x !== f) })
+                  }
+                  className="accent-sky-500"
+                />
+                Orbit can change files here
+              </label>
               <Button variant="danger" icon={X} title="Remove" onClick={() => void dash.updateSettings({ allowedFolders: s.allowedFolders.filter((x) => x !== f) })} />
             </div>
           ))}

@@ -10,6 +10,7 @@ export function LogsPage(): React.JSX.Element {
   const [open, setOpen] = useState<number | null>(null)
   const [changes, setChanges] = useState<ChangeItem[]>([])
   const [undoError, setUndoError] = useState('')
+  const [conflict, setConflict] = useState<{ id: number; message: string } | null>(null)
   const load = (): void => {
     void dash.audit(500).then(setItems)
     void dash.changes().then(setChanges)
@@ -20,9 +21,16 @@ export function LogsPage(): React.JSX.Element {
     return dash.onChanged((w) => w === 'logs' && load())
   }, [])
 
-  const undo = (id: number): void => {
+  const undo = (id: number, force = false): void => {
     setUndoError('')
-    dash.undo(id).then(load, (err: Error) => setUndoError(err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')))
+    setConflict(null)
+    dash.undo(id, force).then(
+      (r) => {
+        if ('conflict' in r) setConflict({ id, message: r.conflict })
+        load()
+      },
+      (err: Error) => setUndoError(err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+    )
   }
 
   const tools = useMemo(() => [...new Set(items.map((i) => i.tool))].sort(), [items])
@@ -45,8 +53,19 @@ export function LogsPage(): React.JSX.Element {
       {changes.length > 0 && (
         <Card className="mb-5 p-4">
           <div className="text-sm font-medium text-zinc-100">Recent changes</div>
-          <div className="mb-3 text-xs text-zinc-500">Changes to Orbit's own files, memories, reminders and workflows. Each can be undone.</div>
+          <div className="mb-3 text-xs text-zinc-500">Changes to Orbit's own files, memories, reminders and workflows, and to files in folders you let it change. Each can be undone.</div>
           {undoError && <p className="mb-2 text-xs text-rose-300">{undoError}</p>}
+          {conflict && (
+            <div className="mb-2 flex items-center gap-3 rounded-lg border border-amber-400/25 bg-amber-400/[0.05] px-3 py-2 text-xs text-amber-200">
+              <span className="flex-1">{conflict.message}</span>
+              <Button variant="ghost" onClick={() => undo(conflict.id, true)}>
+                Undo anyway
+              </Button>
+              <Button variant="ghost" onClick={() => setConflict(null)}>
+                Keep it
+              </Button>
+            </div>
+          )}
           <div className="divide-y divide-white/[0.05]">
             {changes.slice(0, 12).map((c) => (
               <div key={c.id} className="flex items-center gap-3 py-1.5 text-sm">

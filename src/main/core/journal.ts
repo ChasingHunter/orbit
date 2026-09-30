@@ -2,10 +2,12 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { dirname } from 'node:path'
 import { EventEmitter } from 'node:events'
 import { getDb, now } from './db'
+import type { FileOp } from './userFiles'
 
 // Undo journal for changes Orbit makes to its own things (files folder, memories, reminders,
-// workflows). Each entry stores what's needed to put things back. Actions in other services
-// (a sent email) can't be undone; those are covered by approvals and the audit log.
+// workflows) and to files in folders you made writable (see userFiles.ts). Each entry stores
+// what's needed to put things back. Actions in other services (a sent email) can't be undone;
+// those are covered by approvals and the audit log.
 
 export type Undo =
   | { kind: 'file'; path: string; previous: string | null }
@@ -16,10 +18,16 @@ export type Undo =
   | { kind: 'schedule-removed'; row: Record<string, unknown> }
   | { kind: 'workflow-saved'; name: string; file: string; previous: string | null }
   | { kind: 'workflow-removed'; file: string; yaml: string }
+  | { kind: 'user-files'; ops: FileOp[] }
 
 export type Change = { id: number; at: string; source: string; summary: string; undo: Undo; undone_at: string | null }
 
-type Handler = (u: Undo) => void
+/** Undoing would overwrite something changed since. Undo again with force to go ahead. */
+export class UndoConflict extends Error {
+  readonly conflict = true
+}
+
+type Handler = (u: Undo, force: boolean) => void
 const handlers = new Map<Undo['kind'], Handler>()
 export const journalEvents = new EventEmitter()
 
@@ -51,15 +59,15 @@ export function recentChanges(limit = 50): Change[] {
   }))
 }
 
-/** Reverses one change. Throws if it was already undone or can't be. */
-export function undoChange(id: number): string {
+/** Reverses one change. Throws if it was already undone or can't be, or UndoConflict. */
+export function undoChange(id: number, force = false): string {
   const row = db().prepare('SELECT * FROM journal WHERE id = ?').get(id) as (Omit<Change, 'undo'> & { undo: string }) | undefined
   if (!row) throw new Error(`No change #${id}`)
   if (row.undone_at) throw new Error('That change was already undone')
   const undo = JSON.parse(row.undo) as Undo
   const fn = handlers.get(undo.kind)
   if (!fn) throw new Error(`Can't undo ${undo.kind}`)
-  fn(undo)
+  fn(undo, force)
   db().prepare('UPDATE journal SET undone_at = ? WHERE id = ?').run(now(), id)
   journalEvents.emit('change')
   return `Undid: ${row.summary}`

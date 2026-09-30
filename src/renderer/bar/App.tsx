@@ -880,16 +880,20 @@ function ApprovalCard(props: { req: ApprovalRequest; onDecide: (id: string, deci
         <ShieldAlert size={14} /> APPROVAL NEEDED · {req.tool}
       </div>
       <div className="mt-1.5 text-sm text-zinc-100">{req.title}</div>
-      <dl className="mt-2 max-h-48 space-y-1.5 overflow-auto rounded-lg bg-black/30 p-2.5 text-xs">
-        {Object.entries((req.input ?? {}) as Record<string, unknown>).map(([k, v]) => (
-          <div key={k} className="grid grid-cols-[72px_1fr] gap-2">
-            <dt className="text-zinc-500">{k}</dt>
-            <dd className="whitespace-pre-wrap break-words text-zinc-200">
-              {typeof v === 'string' ? v : JSON.stringify(v, null, 2)}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      {req.preview ? (
+        <pre className="mt-2 max-h-56 overflow-auto rounded-lg bg-black/30 p-2.5 font-sans text-xs break-words whitespace-pre-wrap text-zinc-200">{req.preview}</pre>
+      ) : (
+        <dl className="mt-2 max-h-48 space-y-1.5 overflow-auto rounded-lg bg-black/30 p-2.5 text-xs">
+          {Object.entries((req.input ?? {}) as Record<string, unknown>).map(([k, v]) => (
+            <div key={k} className="grid grid-cols-[72px_1fr] gap-2">
+              <dt className="text-zinc-500">{k}</dt>
+              <dd className="whitespace-pre-wrap break-words text-zinc-200">
+                {typeof v === 'string' ? v : JSON.stringify(v, null, 2)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
       <div className="mt-2.5 flex gap-2">
         <button
           onClick={() => onDecide(req.id, 'once')}

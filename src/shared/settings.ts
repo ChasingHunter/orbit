@@ -138,7 +138,12 @@ export const Settings = z.object({
   files: z
     .object({
       /** Folders read_file and list_folder may read. %DOWNLOADS%, %DESKTOP%, %DOCUMENTS% and ~ work. */
-      allowedFolders: z.array(z.string()).default(['%DOWNLOADS%', '%DESKTOP%'])
+      allowedFolders: z.array(z.string()).default(['%DOWNLOADS%', '%DESKTOP%']),
+      /** Of those, the ones Orbit may also change files in. Off for all by default. */
+      writableFolders: z.array(z.string()).default([]),
+      /** Backups taken before a change are kept this long, and within this much space. */
+      snapshotDays: z.number().int().min(1).max(365).default(30),
+      snapshotMaxMb: z.number().int().min(100).default(2048)
     })
     .prefault({}),
 

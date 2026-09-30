@@ -87,6 +87,8 @@ Say "research the best Postgres hosting for a startup in India, in the backgroun
 
 Orbit can read files in the folders you allow (Downloads and Desktop to start; change them in Settings). It reads PDFs and plain text, so "summarise the PDFs in my Downloads" works, and so does a workflow that reads each new invoice that lands there. It can't read anything outside those folders, even through shortcuts.
 
+It only changes files in a folder when you turn on "Orbit can change files here" for that folder in Settings. Then it can create, edit, rename, move, copy and delete files there, so "rename the scans in Downloads by invoice number" works. Before any change, the old file is backed up to `%APPDATA%\Orbit\snapshots` (kept 30 days, up to 2 GB), and deleting just moves the file there. A batch like 40 renames is one approval card that lists every change, and one Undo. If you edited a file after Orbit did, Undo tells you and asks before putting the old one back (your newer version gets backed up too). Orbit won't create or rename anything to a type that runs when you open it, like .exe, .bat or .ps1.
+
 ## Reminders and workflows
 
 "Remind me in 30 minutes to stretch" or "remind me every weekday at 9 to check the deploy" sets a desktop notification. It works offline.
@@ -144,9 +146,9 @@ Text you select and pages Orbit reads are treated as data, so a web page can't t
 
 ## Undoing things
 
-Everything Orbit changes in its own space goes into a journal first: memories it saves, edits or deletes, reminders, workflows, and files it writes to its files folder. The Logs page lists recent changes with an Undo button, and you can also just say "undo that" in the bar.
+Everything Orbit changes goes into a journal first: memories it saves, edits or deletes, reminders, workflows, files it writes to its files folder, and files it changes in folders you made writable. The Logs page lists recent changes with an Undo button, and you can also just say "undo that" in the bar.
 
-Orbit can't write to your own folders at all (the ones you allow are read-only), and workflow code runs in a sandbox with no file or network access. Things that leave your PC, like a sent email or a Slack post, can't be pulled back, which is why they ask first unless you've chosen Trusted or Full. Those are always in the log, so you can see exactly what went out and fix it by hand.
+Your folders are read-only unless you say otherwise, and workflow code runs in a sandbox with no file or network access. Things that leave your PC, like a sent email or a Slack post, can't be pulled back, which is why they ask first unless you've chosen Trusted or Full. Those are always in the log, so you can see exactly what went out and fix it by hand.
 
 ## How many tokens it uses
 

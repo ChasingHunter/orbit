@@ -22,11 +22,13 @@ export function allowedFolders(): string[] {
 }
 
 /** Resolves a path (following links) and refuses anything outside the allowed folders. */
-function checked(path: string): string {
+export function checked(path: string): string {
   const roots = allowedFolders()
-  // Files attached in the bar are copied here, so they stay readable for follow-ups.
-  const readable = [...roots, paths.attachments]
-  if (!roots.length && !path.toLowerCase().startsWith(paths.attachments.toLowerCase())) throw new Error('No folders are allowed yet. Add one under Settings in the dashboard.')
+  // Files attached in the bar are copied here, so they stay readable for follow-ups; Orbit's own
+  // files folder is readable so what it made can be copied out.
+  const own = [paths.attachments, paths.files]
+  const readable = [...roots, ...own]
+  if (!roots.length && !own.some((o) => path.toLowerCase().startsWith(o.toLowerCase()))) throw new Error('No folders are allowed yet. Add one under Settings in the dashboard.')
   const guess = resolve(roots.find(() => !/^[a-z]:|^[\\/]/i.test(path)) ?? '', path)
   let real: string
   try {
