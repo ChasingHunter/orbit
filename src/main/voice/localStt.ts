@@ -49,7 +49,9 @@ export function installModel(onProgress: (fraction: number, phase: 'download' | 
     await pipeline(body, createWriteStream(archive))
     onProgress(1, 'unpack')
     // Windows 10+ ships bsdtar, which handles .tar.bz2.
-    await promisify(execFile)('tar', ['-xjf', archive, '-C', modelsDir])
+    // Windows' own tar by full path: with Git's tools on PATH, plain "tar" is GNU tar, which
+    // reads "C:\..." as a remote host and fails after the whole download.
+    await promisify(execFile)(join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe'), ['-xjf', archive, '-C', modelsDir])
     rmSync(archive, { force: true })
     if (!MODEL_FILES.every((n) => existsSync(file(n)))) throw new Error('Model files missing after extraction')
     writeFileSync(file(MARKER), new Date().toISOString())
