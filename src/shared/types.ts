@@ -14,6 +14,8 @@ export type AgentEvent =
   | { type: 'tool-call'; id: string; name: string; input: unknown }
   | { type: 'tool-result'; id: string; name: string; output: string; isError: boolean }
   | { type: 'rate-limit'; resetsAt?: number; message: string }
+  /** Tokens used by the turn that just finished. input excludes cached tokens. */
+  | { type: 'usage'; model: string; input: number; output: number; cacheRead: number; cacheWrite: number }
   | { type: 'error'; message: string }
   | { type: 'done' }
 
@@ -45,7 +47,7 @@ export type BarEvent =
 
 export interface OrbitApi {
   onEvent(cb: (e: BarEvent) => void): () => void
-  submit(text: string, context: ContextItem[]): Promise<{ turnId: string }>
+  submit(text: string, context: ContextItem[], opts?: { quick?: boolean }): Promise<{ turnId: string }>
   cancel(): void
   newChat(): void
   approve(id: string, approved: boolean): void

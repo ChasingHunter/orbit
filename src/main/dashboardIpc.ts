@@ -20,7 +20,8 @@ import { TEMPLATES } from './workflows/templates'
 import { describeTrigger } from './workflows/describe'
 import { triggers } from './workflows/triggers'
 import { scheduler } from './core/scheduler'
-import type { WorkflowInfo } from '@shared/dash'
+import type { UsageInfo, WorkflowInfo } from '@shared/dash'
+import { backgroundTokensToday, usageSummary } from './core/usage'
 import { toValidYaml } from './workflows/validate'
 import { allTools } from './core/tools/registry'
 
@@ -139,6 +140,16 @@ export function registerDashboardIpc(): void {
         }
       })
   })
+
+  ipcMain.handle(
+    'dash:usage',
+    (): UsageInfo => ({ ...usageSummary(14), backgroundToday: backgroundTokensToday(), backgroundLimit: settings.current.budget.backgroundDailyTokens })
+  )
+  ipcMain.handle('dash:set-budget', (_e, n: number) =>
+    settings.update((d) => {
+      d.budget.backgroundDailyTokens = Math.max(0, Math.round(n))
+    })
+  )
 
   ipcMain.handle('dash:tasks', () => tasks.list())
   ipcMain.handle('dash:task-cancel', (_e, id: string) => tasks.cancel(id))

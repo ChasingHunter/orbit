@@ -8,7 +8,7 @@ const api: OrbitApi = {
     ipcRenderer.on('bar:event', fn)
     return () => ipcRenderer.off('bar:event', fn)
   },
-  submit: (text, context) => ipcRenderer.invoke('bar:submit', text, context),
+  submit: (text, context, opts) => ipcRenderer.invoke('bar:submit', text, context, opts),
   cancel: () => ipcRenderer.send('bar:cancel'),
   newChat: () => ipcRenderer.send('bar:new'),
   approve: (id, approved) => ipcRenderer.send('bar:approve', id, approved),
@@ -70,6 +70,8 @@ const dash: DashApi = {
   workflowSave: (previousName, data) => ipcRenderer.invoke('dash:workflow-save', previousName, data),
   tools: () => ipcRenderer.invoke('dash:tools'),
   audit: (limit) => ipcRenderer.invoke('dash:audit', limit),
+  usage: () => ipcRenderer.invoke('dash:usage'),
+  setBudget: (n) => ipcRenderer.invoke('dash:set-budget', n),
   settings: () => ipcRenderer.invoke('dash:settings'),
   updateSettings: (patch) => ipcRenderer.invoke('dash:settings-update', patch),
   pickFolder: () => ipcRenderer.invoke('dash:pick-folder'),

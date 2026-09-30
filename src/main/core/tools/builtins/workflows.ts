@@ -59,9 +59,20 @@ Rules:
 - approved: true exists only on tool steps. Steps that change things and aren't approved: true ask for approval every run.
 - A scheduled run's final output is shown to the user as a notification, so a final agent step works for "summarise X for me" workflows.`
 
+// The full format guide is its own tool so its ~900 tokens aren't sent with every message,
+// only when the model is actually writing a workflow.
+export const workflowGuide = defineTool({
+  name: 'workflow_guide',
+  description: 'Returns the YAML format for workflows (triggers, steps, branches, loops, code). Read it before calling create_workflow.',
+  input: {},
+  sideEffect: false,
+  run: async () => SPEC
+})
+
 export const createWorkflow = defineTool({
   name: 'create_workflow',
-  description: `Create or replace a saved workflow that runs on a schedule or on demand. Use list_integrations first so tool names match what's connected. The user sees the YAML and must approve it before it's saved. ${SPEC}`,
+  description:
+    "Create or replace a saved workflow that runs on a schedule, on an event, or on demand. Call workflow_guide first for the YAML format, and list_integrations so tool names match what's connected. The user sees the YAML and must approve it before it's saved.",
   input: { yaml: z.string().describe('The whole workflow as YAML') },
   sideEffect: false, // approval happens below, after validation, so the user never approves YAML that won't load
   run: async ({ yaml }, { signal }) => {
@@ -76,7 +87,7 @@ export const createWorkflow = defineTool({
       }
       if ('cron' in wf.trigger) nextRunFor({ cron: wf.trigger.cron })
     } catch (err) {
-      throw new Error(`That YAML isn't valid: ${explain(err)}. Fix it and try again.`)
+      throw new Error(`That YAML isn't valid: ${explain(err)}. Check workflow_guide and try again.`)
     }
     const exists = !!workflowStore.get(name)
     const ok = await requestApproval({ tool: 'create_workflow', title: `${exists ? 'Replace' : 'Save'} workflow "${name}"`, input: { yaml } }, signal)

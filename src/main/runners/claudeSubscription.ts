@@ -10,6 +10,7 @@ import { app } from 'electron'
 import { join } from 'node:path'
 import type { AgentEvent } from '@shared/types'
 import { paths } from '../paths'
+import { settings } from '../settingsStore'
 import { AsyncQueue } from '../asyncQueue'
 import type { AgentRunner, RunnerSession, SessionOptions, UserTurn } from './types'
 
@@ -39,6 +40,8 @@ class ClaudeSession implements RunnerSession {
   private input = new AsyncQueue<SDKUserMessage>()
   private q: Query | undefined
   private turn: AsyncQueue<AgentEvent> | undefined
+  /** modelUsage in results is a running total for the session; this is the last one seen. */
+  private totals: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {}
 
   constructor(private opts: SessionOptions) {}
 
@@ -62,6 +65,7 @@ class ClaudeSession implements RunnerSession {
       prompt: this.input,
       options: {
         model: this.opts.model,
+        ...(settings.current.models.effort !== 'auto' ? { effort: settings.current.models.effort } : {}),
         pathToClaudeCodeExecutable: claudeExecutable(),
         systemPrompt: this.opts.system,
         tools: [], // no built-in tools
@@ -80,8 +84,24 @@ class ClaudeSession implements RunnerSession {
         env: {
           ...env,
           ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
-          CLAUDE_AGENT_SDK_CLIENT_APP: 'orbit/0.1.0'
+          CLAUDE_AGENT_SDK_CLIENT_APP: 'orbit',
+          // Claude Code extras Orbit doesn't use. The terminal title alone is an extra model call
+          // (~900 tokens) at the start of every chat; the rest trim what's added to each request.
+          CLAUDE_CODE_DISABLE_TERMINAL_TITLE: '1',
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+          CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
+          CLAUDE_CODE_DISABLE_CLAUDE_MDS: '1',
+          CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS: '1',
+          CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING: '1',
+          CLAUDE_CODE_DISABLE_BUNDLED_SKILLS: '1',
+          CLAUDE_CODE_DISABLE_ATTACHMENTS: '1',
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
+          CLAUDE_CODE_DISABLE_CRON: '1',
+          CLAUDE_CODE_DISABLE_WORKFLOWS: '1',
+          CLAUDE_CODE_DISABLE_ARTIFACT: '1',
+          CLAUDE_CODE_DISABLE_ADVISOR_TOOL: '1'
         },
+        promptSuggestions: false,
         stderr: (d) => console.error('[claude]', d.trimEnd())
       }
     })
@@ -128,6 +148,19 @@ class ClaudeSession implements RunnerSession {
         return
       }
       case 'result':
+        // Report this turn's share: the difference from the previous running total, per model.
+        for (const [model, u] of Object.entries(msg.modelUsage ?? {})) {
+          const prev = this.totals[model] ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+          const now = { input: u.inputTokens, output: u.outputTokens, cacheRead: u.cacheReadInputTokens, cacheWrite: u.cacheCreationInputTokens }
+          this.totals[model] = now
+          const delta = {
+            input: now.input - prev.input,
+            output: now.output - prev.output,
+            cacheRead: now.cacheRead - prev.cacheRead,
+            cacheWrite: now.cacheWrite - prev.cacheWrite
+          }
+          if (delta.input + delta.output + delta.cacheRead + delta.cacheWrite > 0) turn.push({ type: 'usage', model, ...delta })
+        }
         if (msg.subtype !== 'success') turn.push({ type: 'error', message: msg.errors.join('\n') || msg.subtype })
         this.endTurn()
         return

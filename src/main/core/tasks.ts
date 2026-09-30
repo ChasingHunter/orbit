@@ -8,6 +8,7 @@ import { settings } from '../settingsStore'
 import { resolveModel } from '../runners'
 import { getDb, now } from './db'
 import { runnableTools } from './tools/registry'
+import { backgroundTokensToday, recordUsage, type UsageSource } from './usage'
 
 export type Purpose = 'quick' | 'chat' | 'research'
 export type TaskStatus = 'running' | 'done' | 'failed' | 'cancelled'
@@ -33,8 +34,13 @@ export async function runAgent(
   prompt: string,
   purpose: Purpose | string,
   signal: AbortSignal,
-  opts: { tools?: string[]; system?: string } = {}
+  opts: { tools?: string[]; system?: string; source?: UsageSource; label?: string } = {}
 ): Promise<string> {
+  const limit = settings.current.budget.backgroundDailyTokens
+  if ((opts.source ?? 'task') !== 'chat' && limit > 0 && backgroundTokensToday() >= limit) {
+    budgetNotice(limit)
+    throw new Error(`Today's background budget (${limit.toLocaleString()} tokens) is used up. It resets at midnight, or raise it in Settings.`)
+  }
   // A purpose (quick/chat/research) maps to settings; anything else is a provider:model ref.
   const ref = purpose in settings.current.models ? settings.current.models[purpose as Purpose] : purpose
   const { runner, model } = resolveModel(ref)
@@ -45,6 +51,7 @@ export async function runAgent(
   try {
     for await (const ev of session.send({ text: prompt, images: [] }, signal)) {
       if (ev.type === 'text') text += ev.delta
+      if (ev.type === 'usage') recordUsage(opts.source ?? 'task', opts.label ?? prompt.slice(0, 80), ev)
       else if (ev.type === 'error' || ev.type === 'rate-limit') errors.push(ev.message)
       if (ev.type === 'done') break
     }
@@ -54,6 +61,17 @@ export async function runAgent(
   if (signal.aborted) throw new Error('Cancelled')
   if (!text.trim() && errors.length) throw new Error(errors.join('\n'))
   return text.trim()
+}
+
+let noticedDay = ''
+function budgetNotice(limit: number): void {
+  const day = new Date().toDateString()
+  if (noticedDay === day) return
+  noticedDay = day
+  new Notification({
+    title: 'Background work paused for today',
+    body: `Workflows and background tasks used their ${limit.toLocaleString()}-token budget. Chat still works.`
+  }).show()
 }
 
 function slug(s: string): string {

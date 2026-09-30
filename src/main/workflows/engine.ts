@@ -247,7 +247,7 @@ class WorkflowEngine extends EventEmitter {
 
   private async runAgentic(wf: Workflow, ctx: Ctx, signal: AbortSignal): Promise<string> {
     const prompt = `<now>${ctx.now}</now>\n\n${render(wf.prompt!, ctx)}`
-    return runAgent(prompt, wf.model, signal, { tools: wf.tools.length ? wf.tools : undefined })
+    return runAgent(prompt, wf.model, signal, { tools: wf.tools.length ? wf.tools : undefined, source: 'workflow', label: wf.name })
   }
 
   /**
@@ -311,7 +311,7 @@ class WorkflowEngine extends EventEmitter {
           `Answer with only "yes" or "no".\n\nQuestion: ${asked}${data ? `\n\n<input>\n${data}\n</input>` : ''}`,
           'quick',
           signal,
-          { tools: [], system: WORKFLOW_AGENT_SYSTEM }
+          { tools: [], system: WORKFLOW_AGENT_SYSTEM, source: 'workflow', label: `${wf.name}: ${step.id}` }
         )
         yes = /^\W*yes\b/i.test(answer)
       }
@@ -389,7 +389,7 @@ class WorkflowEngine extends EventEmitter {
         const data = step.input ? render(step.input, ctx) : ''
         const prompt = `<now>${ctx.now}</now>\n\n${render(step.agent, ctx)}${data ? `\n\n<input>\n${data}\n</input>` : ''}`
         try {
-          const out = await runAgent(prompt, step.model ?? wf.model, signal, { tools: step.tools, system: WORKFLOW_AGENT_SYSTEM })
+          const out = await runAgent(prompt, step.model ?? wf.model, signal, { tools: step.tools, system: WORKFLOW_AGENT_SYSTEM, source: 'workflow', label: `${wf.name}: ${step.id}` })
           if (out) return { input: clip(data, 4000), output: out, attempts: attempt }
           lastError = 'The model returned nothing'
         } catch (err) {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { DashSettings } from '@shared/dash'
-import { Brain, History, ListChecks, Plug, ScrollText, Settings as SettingsIcon, Workflow, type LucideIcon } from 'lucide-react'
+import { BarChart3, Brain, History, ListChecks, Plug, ScrollText, Settings as SettingsIcon, Workflow, type LucideIcon } from 'lucide-react'
 import type { DashPage } from '@shared/dash'
 import { dash } from './ui'
 import { TasksPage } from './pages/Tasks'
@@ -10,6 +10,7 @@ import { MemoryPage } from './pages/Memory'
 import { HistoryPage } from './pages/History'
 import { SettingsPage } from './pages/Settings'
 import { LogsPage } from './pages/Logs'
+import { UsagePage } from './pages/Usage'
 
 const NAV: { id: DashPage; label: string; icon: LucideIcon }[] = [
   { id: 'tasks', label: 'Tasks', icon: ListChecks },
@@ -17,6 +18,7 @@ const NAV: { id: DashPage; label: string; icon: LucideIcon }[] = [
   { id: 'integrations', label: 'Integrations', icon: Plug },
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'history', label: 'History', icon: History },
+  { id: 'usage', label: 'Usage', icon: BarChart3 },
   { id: 'logs', label: 'Logs', icon: ScrollText },
   { id: 'settings', label: 'Settings', icon: SettingsIcon }
 ]
@@ -80,6 +82,7 @@ export function App(): React.JSX.Element {
           {page === 'integrations' && <IntegrationsPage />}
           {page === 'memory' && <MemoryPage />}
           {page === 'history' && <HistoryPage />}
+          {page === 'usage' && <UsagePage />}
           {page === 'logs' && <LogsPage />}
           {page === 'settings' && <SettingsPage />}
         </div>

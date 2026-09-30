@@ -102,7 +102,7 @@ export function App(): React.JSX.Element {
     if (!text.trim() || isBusy) return
     if (!override) setInput('')
     api.stopSpeaking()
-    const { turnId } = await api.submit(text, ctx)
+    const { turnId } = await api.submit(text, ctx, override ? { quick: true } : undefined)
     if (turnId && override && override.output !== 'popup') pendingOutput.current.set(turnId, override.output)
     const readThis = speakMode.current === 'always' || (speakMode.current === 'voice' && spokenQuestion.current)
     spokenQuestion.current = false

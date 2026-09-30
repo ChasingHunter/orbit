@@ -96,7 +96,14 @@ export type TemplateInfo = { id: string; title: string; summary: string; install
 
 export type AuditItem = { at: string; tool: string; decision: 'allowed' | 'approved' | 'denied' | 'blocked'; ok?: boolean; input: unknown; output?: string }
 
-export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'logs' | 'settings'
+export type UsageInfo = {
+  days: { day: string; source: 'chat' | 'task' | 'workflow' | 'trigger'; input: number; output: number; cacheRead: number; cacheWrite: number; calls: number }[]
+  top: { label: string; source: string; tokens: number; calls: number }[]
+  backgroundToday: number
+  backgroundLimit: number
+}
+
+export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'usage' | 'logs' | 'settings'
 
 export interface DashApi {
   onChanged(cb: (what: 'integrations' | 'tasks' | 'memory' | 'history' | 'settings' | 'workflows') => void): () => void
@@ -132,6 +139,8 @@ export interface DashApi {
   workflowSave(previousName: string | null, data: unknown): Promise<string>
   tools(): Promise<{ name: string; description: string; sideEffect: boolean }[]>
   audit(limit?: number): Promise<AuditItem[]>
+  usage(): Promise<UsageInfo>
+  setBudget(tokensPerDay: number): Promise<void>
   settings(): Promise<DashSettings>
   updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[]; voiceMode?: DashSettings['voiceMode']; startWithWindows?: boolean; autoUpdate?: boolean; speech?: Partial<DashSettings['speech']> }): Promise<void>
   /** Says a short sample with the current speech settings. */

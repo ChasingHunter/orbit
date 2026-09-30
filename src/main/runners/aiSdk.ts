@@ -66,6 +66,11 @@ class AISdkSession implements RunnerSession {
       for await (const part of result.fullStream) {
         if (part.type === 'text-delta') yield { type: 'text', delta: part.text }
         else if (part.type === 'error') yield { type: 'error', message: errorText(part.error) }
+        else if (part.type === 'finish') {
+          const u = part.totalUsage
+          const cached = u.inputTokenDetails?.cacheReadTokens ?? 0
+          yield { type: 'usage', model: this.opts.model, input: (u.inputTokens ?? 0) - cached, output: u.outputTokens ?? 0, cacheRead: cached, cacheWrite: 0 }
+        }
       }
       const response = await result.response
       this.history = [...messages, ...response.messages]

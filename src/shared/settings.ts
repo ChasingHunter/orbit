@@ -63,7 +63,10 @@ export const Settings = z.object({
     .object({
       chat: z.string().default('claude:sonnet'),
       quick: z.string().default('claude:haiku'),
-      research: z.string().default('claude:opus'),
+      // Sonnet, not Opus: Opus uses up weekly subscription limits much faster.
+      research: z.string().default('claude:sonnet'),
+      /** How hard Claude thinks. Lower uses fewer tokens; 'auto' leaves it to Claude. */
+      effort: z.enum(['auto', 'low', 'medium', 'high']).default('auto'),
       /** Used when offline or when the usual model hits a limit. 'auto' picks a local Ollama model. */
       fallback: z.string().default('auto')
     })
@@ -78,6 +81,16 @@ export const Settings = z.object({
           provider: z.enum(['brave', 'tavily']).default('brave')
         })
         .prefault({})
+    })
+    .prefault({}),
+
+  budget: z
+    .object({
+      /**
+       * Most tokens background work (workflows, triggers, tasks) may use per day before it pauses.
+       * Counts fresh input, cache writes and output; cheap cache reads are left out. 0 = no limit.
+       */
+      backgroundDailyTokens: z.number().int().min(0).default(300_000)
     })
     .prefault({}),
 

@@ -26,7 +26,8 @@ import { tasks } from './core/tasks'
 import { scheduler } from './core/scheduler'
 import { workflows } from './workflows/engine'
 import { triggers } from './workflows/triggers'
-import { callTool } from './core/tools/registry'
+import { callTool, runnableTools } from './core/tools/registry'
+import { z } from 'zod'
 import { browserUrl, startBrowserUrlHelper, stopBrowserUrlHelper } from './os/browserUrl'
 import { registerDashboardIpc } from './dashboardIpc'
 import { openDashboard } from './windows/dashboard'
@@ -205,9 +206,9 @@ function handleCommand(text: string): boolean {
 }
 
 function registerIpc(): void {
-  ipcMain.handle('bar:submit', (_e, text: string, context: ContextItem[]) => {
+  ipcMain.handle('bar:submit', (_e, text: string, context: ContextItem[], opts?: { quick?: boolean }) => {
     if (handleCommand(text)) return { turnId: '' }
-    return { turnId: conversation.submit(text, context) }
+    return { turnId: conversation.submit(text, context, opts) }
   })
   ipcMain.on('bar:cancel', () => conversation.cancel())
   ipcMain.on('bar:new', () => conversation.reset())
@@ -321,6 +322,7 @@ app.whenReady().then(() => {
   if (process.env.ORBIT_E2E) {
     // Test hook for scripts/e2e.ts; never set in normal runs.
     Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, speaker,
+      measureTools: () => runnableTools(() => []).map((t) => ({ name: t.name, chars: t.description.length + JSON.stringify(z.toJSONSchema(z.object(t.input))).length })),
       callTool: (name: string, input: unknown) => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [] }) } })
     return
   }

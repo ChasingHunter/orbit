@@ -9,6 +9,7 @@ import type { RunnerSession } from '../runners/types'
 import { runnableTools } from './tools/registry'
 import { searchMemories, type Memory } from './memory'
 import { addMessage, createConversation, getMessages } from './history'
+import { recordUsage } from './usage'
 import type { RunnableTool } from './tools/types'
 
 type Emit = (turnId: string, event: AgentEvent) => void
@@ -68,6 +69,8 @@ export class Conversation {
   private conversationId: string | undefined
   /** Transcript of an earlier conversation, sent along with the next message after resuming. */
   private carryOver = ''
+  /** Set when a quick action started this chat; follow-ups stay on the same model. */
+  private quickChat = false
 
   /** Set by "use the local model for now" after a usage limit; cleared on restart. */
   private override: string | undefined
@@ -86,7 +89,7 @@ export class Conversation {
    * Offline, most tools can't work and small local models get confused by them, so none are given.
    */
   private async pickModel(): Promise<{ ref: string; tools: boolean }> {
-    const usual = this.override ?? settings.current.models.chat
+    const usual = this.override ?? (this.quickChat ? settings.current.models.quick : settings.current.models.chat)
     if (isOnline() || !isCloudModel(usual)) return { ref: usual, tools: true }
     const local = await fallbackModel()
     if (!local) throw new Error("You're offline and no local model is set up. Install Ollama and pull a model (e.g. ollama pull qwen3:4b), then try again.")
@@ -131,7 +134,9 @@ export class Conversation {
     }))
   }
 
-  submit(text: string, context: ContextItem[]): string {
+  /** quick: a one-click action; if it starts a new chat, the cheaper quick model answers it. */
+  submit(text: string, context: ContextItem[], opts: { quick?: boolean } = {}): string {
+    if (!this.conversationId) this.quickChat = !!opts.quick
     if (this.abort) throw new Error('Still working on the previous request')
     const turnId = randomUUID()
     this.turnId = turnId
@@ -157,6 +162,7 @@ export class Conversation {
         if (carry) turn.text = `<earlier_conversation note="the user reopened this chat; continue from it">\n${carry}\n</earlier_conversation>\n\n${turn.text}`
         for await (const ev of session.send(turn, abort.signal)) {
           if (ev.type === 'text') answer += ev.delta
+          if (ev.type === 'usage') recordUsage('chat', text, ev)
           if (ev.type === 'rate-limit') void this.offerFallback(ev.resetsAt)
           this.emit(turnId, ev)
           if (ev.type === 'done') break
@@ -200,5 +206,6 @@ export class Conversation {
     this.session = undefined
     this.context = []
     this.conversationId = undefined
+    this.quickChat = false
   }
 }
