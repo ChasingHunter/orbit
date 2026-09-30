@@ -5,10 +5,15 @@ import tailwindcss from '@tailwindcss/vite'
 
 const shared = { '@shared': resolve('src/shared') }
 
+// Native addons must stay in node_modules next to their DLLs; never bundle them,
+// even if the dev server started before they were installed.
+const nativeExternals = ['sherpa-onnx-node', 'koffi', 'selection-hook', '@anthropic-ai/claude-agent-sdk']
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
-    resolve: { alias: shared }
+    resolve: { alias: shared },
+    build: { rollupOptions: { external: nativeExternals } }
   },
   preload: {
     plugins: [externalizeDepsPlugin()],

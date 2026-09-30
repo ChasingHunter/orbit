@@ -6,12 +6,20 @@ import {
   type SDKMessage,
   type SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
+import { app } from 'electron'
+import { join } from 'node:path'
 import type { AgentEvent } from '@shared/types'
 import { paths } from '../paths'
 import { AsyncQueue } from '../asyncQueue'
 import type { AgentRunner, RunnerSession, SessionOptions, UserTurn } from './types'
 
 const SERVER = 'orbit'
+
+/** In the installed app the bundled Claude Code binary lives outside the asar archive. */
+function claudeExecutable(): string | undefined {
+  if (!app.isPackaged) return undefined // SDK resolves it from node_modules
+  return join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@anthropic-ai', 'claude-agent-sdk-win32-x64', 'claude.exe')
+}
 
 /**
  * Uses the user's own logged-in Claude Code (via the Agent SDK) purely as model access.
@@ -54,6 +62,7 @@ class ClaudeSession implements RunnerSession {
       prompt: this.input,
       options: {
         model: this.opts.model,
+        pathToClaudeCodeExecutable: claudeExecutable(),
         systemPrompt: this.opts.system,
         tools: [], // no built-in tools
         // Single gate: Orbit tools pass (Orbit's own executor handles approvals), anything else is denied.

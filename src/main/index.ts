@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import type { ContextItem } from '@shared/types'
 import { join } from 'node:path'
 import { dataDir, ensureDataDirs } from './paths'
+import { installLogging } from './log'
 import { settings } from './settingsStore'
 import { setSecret } from './secrets'
 import { Conversation } from './core/conversation'
@@ -16,6 +17,9 @@ import { VoiceController } from './voice/controller'
 import { transcribe, warmUp } from './voice/localStt'
 import { pasteInto } from './os/writeback'
 import { foregroundWindow, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
+
+ensureDataDirs()
+installLogging((message) => sendToBar({ type: 'notice', level: 'error', text: `Internal error: ${message}` }))
 
 // Keep Chromium caches out of the user-facing data folder.
 app.setPath('userData', join(dataDir, 'chromium'))

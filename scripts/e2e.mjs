@@ -16,8 +16,11 @@ writeFileSync(
   JSON.stringify({ voice: { engine: 'off' }, models: { chat: 'claude:haiku' } })
 )
 
+// ORBIT_EXE=dist/win-unpacked/Orbit.exe tests the packaged app instead of the dev build.
+const exe = process.env.ORBIT_EXE ? resolve(process.env.ORBIT_EXE) : undefined
 const app = await electron.launch({
-  args: [join(root, 'out', 'main', 'index.js')],
+  executablePath: exe,
+  args: exe ? [] : [join(root, 'out', 'main', 'index.js')],
   env: { ...process.env, ORBIT_E2E: '1', ORBIT_DATA_DIR: dataDir }
 })
 const bar = await app.firstWindow()
