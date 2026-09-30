@@ -5,6 +5,7 @@ import type { ContextItem } from '@shared/types'
 import { paths } from '../paths'
 import { canExtract, extractText, IMAGE_TYPES } from './extract'
 import { logInfo } from '../log'
+import { dirSize, ensureRoom } from './disk'
 
 // Files attached in the bar. Each one is copied into %APPDATA%\Orbit\attachments\<day>\ (so
 // follow-ups and read_file can reach it even if the original moves) and its text is pulled out
@@ -33,6 +34,7 @@ export async function attachPaths(files: string[]): Promise<Result> {
 export async function attachData(name: string, data: Uint8Array): Promise<Result> {
   const safe = basename(name).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_') || 'pasted.txt'
   const tmp = join(dayDir(), `${randomUUID().slice(0, 8)}-${safe}`)
+  ensureRoom(data.length, `attach ${safe}`)
   writeFileSync(tmp, data)
   try {
     return { items: [await attachOne(tmp, safe)], errors: [] }
@@ -48,6 +50,7 @@ async function attachOne(file: string, name: string): Promise<ContextItem> {
   if (st.size > MAX_BYTES) throw new Error(`${Math.round(st.size / 1e6)} MB is over the 25 MB limit`)
   if (IMAGE_TYPES.has(extname(file).toLowerCase())) throw new Error('images are attached by the bar, not here')
   if (!canExtract(file)) throw new Error(`can't read ${extname(file) || 'this kind of'} files. PDF, Word, Excel, PowerPoint, images and text work.`)
+  if (!file.startsWith(paths.attachments)) ensureRoom(st.size, `attach ${name}`)
   const copy = file.startsWith(paths.attachments) ? file : join(dayDir(), `${randomUUID().slice(0, 8)}-${name}`)
   if (copy !== file) copyFileSync(file, copy)
   const text = (await extractText(copy)).trim()
@@ -61,14 +64,28 @@ function dayDir(): string {
   return dir
 }
 
-/** Deletes attachment folders older than 30 days. Called at startup. */
-export function pruneAttachments(): void {
+/** Deletes attachment days older than 30 days, then the oldest days until under maxMb. Returns bytes freed. */
+export function pruneAttachments(maxMb = 1024): number {
+  let freed = 0
   try {
     const cutoff = new Date(Date.now() - KEEP_DAYS * 86_400_000).toISOString().slice(0, 10)
-    for (const d of readdirSync(paths.attachments)) {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d < cutoff) rmSync(join(paths.attachments, d), { recursive: true, force: true })
+    const days = readdirSync(paths.attachments).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort()
+    const drop = (d: string): number => {
+      const size = dirSize(join(paths.attachments, d))
+      rmSync(join(paths.attachments, d), { recursive: true, force: true })
+      freed += size
+      return size
+    }
+    const recent = days.filter((d) => (d < cutoff ? (drop(d), false) : true))
+    let total = recent.reduce((t, d) => t + dirSize(join(paths.attachments, d)), 0)
+    // Over the cap, oldest days go first. The newest day stays whatever its size: those files
+    // may be in the chat right now.
+    for (const d of recent.slice(0, -1)) {
+      if (total <= maxMb * 1024 * 1024) break
+      total -= drop(d)
     }
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') logInfo('attachments: prune failed', err)
   }
+  return freed
 }

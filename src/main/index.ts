@@ -33,8 +33,8 @@ import { recentChanges, undoChange } from './core/journal'
 import { z } from 'zod'
 import { browserUrl, startBrowserUrlHelper, stopBrowserUrlHelper } from './os/browserUrl'
 import { registerDashboardIpc, setVoiceInstaller } from './dashboardIpc'
-import { attachData, attachPaths, pruneAttachments } from './core/attachments'
-import { pruneSnapshots } from './core/userFiles'
+import { attachData, attachPaths } from './core/attachments'
+import { runCleanup, startHousekeeping, storageReport } from './core/housekeeping'
 import { registerPythonScheme } from './python/sandbox'
 import { modelChoices } from './runners/choices'
 import { claudeStatus, runChecks } from './system/health'
@@ -295,8 +295,7 @@ function registerIpc(): void {
 
 app.whenReady().then(() => {
   ensureDataDirs()
-  pruneAttachments()
-  pruneSnapshots()
+  startHousekeeping()
   settings.load()
   settings.watch()
   settings.on('change', () => {
@@ -350,7 +349,7 @@ app.whenReady().then(() => {
   })
   if (process.env.ORBIT_E2E) {
     // Test hook for scripts/e2e.ts; never set in normal runs.
-    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, runChecks, speaker, recentChanges, undoChange,
+    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, runChecks, speaker, recentChanges, undoChange, runCleanup, storageReport,
       measureTools: () => runnableTools(() => []).map((t) => ({ name: t.name, chars: t.description.length + JSON.stringify(z.toJSONSchema(z.object(t.input))).length })),
       callTool: (name: string, input: unknown) => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [] }) } })
     return

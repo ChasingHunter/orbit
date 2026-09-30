@@ -160,6 +160,10 @@ Everything Orbit changes goes into a journal first: memories it saves, edits or 
 
 Your folders are read-only unless you say otherwise, and workflow code runs in a sandbox with no file or network access. Things that leave your PC, like a sent email or a Slack post, can't be pulled back, which is why they ask first unless you've chosen Trusted or Full. Those are always in the log, so you can see exactly what went out and fix it by hand.
 
+## Disk space
+
+Logs, backups and the undo history would grow forever if nothing cleaned them up, so Orbit does it once a day: tool logs are kept 90 days (about 70 MB at most), workflow run history 30 days and 3,000 runs, backups of changed files 30 days and 2 GB (or a tenth of your free space, if that's less), and attachment copies 30 days and 1 GB. Your chats, memories and the files Orbit made for you are never deleted automatically; you can set chats to expire in `settings.json` (`storage.chatDays`). Orbit also stops saving backups, attachments and new files when that would leave less than 1 GB free, and warns you when the disk drops under 5 GB. The Usage page shows what each part takes and has a "Clean up now" button.
+
 ## How many tokens it uses
 
 I built this to run on a Claude subscription, so it tries hard not to waste it. Claude Code's extras that cost tokens in the background (chat titles, prompt suggestions, auto memory and so on) are switched off. Tool descriptions are kept short, and the long workflow guide is only loaded when the model is actually writing a workflow. Quick actions go to Haiku.

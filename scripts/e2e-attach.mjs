@@ -55,7 +55,8 @@ const check = (label, ok, detail = '') => {
 }
 const tool = (name, input) => app.evaluate((_e, a) => globalThis.__orbit.callTool(a.name, a.input), { name, input })
 
-check('old attachments are pruned at startup', !existsSync(join(dataDir, 'attachments', '2020-01-01')))
+await app.evaluate(() => globalThis.__orbit.runCleanup())
+check('old attachments are pruned by the daily cleanup', !existsSync(join(dataDir, 'attachments', '2020-01-01')))
 
 // Extraction, straight through the API the bar uses.
 const res = await bar.evaluate((files) => window.orbit.attachPaths(files), ['brief.docx', 'costs.xlsx', 'deck.pptx', 'long.txt', 'archive.zip'].map((f) => join(src, f)))

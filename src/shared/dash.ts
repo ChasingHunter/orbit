@@ -106,6 +106,14 @@ export type TemplateInfo = { id: string; title: string; summary: string; install
 
 export type AuditItem = { at: string; tool: string; decision: 'allowed' | 'approved' | 'denied' | 'blocked'; ok?: boolean; input: unknown; output?: string }
 
+export type StorageInfo = {
+  items: { id: string; label: string; bytes: number; limit: string }[]
+  total: number
+  /** Free space on the drive Orbit's data is on. */
+  free: number
+  last?: { at: string; freed: number }
+}
+
 export type SetupCheck = {
   id: string
   name: string
@@ -176,6 +184,8 @@ export interface DashApi {
   tools(): Promise<{ name: string; description: string; sideEffect: boolean }[]>
   audit(limit?: number): Promise<AuditItem[]>
   usage(): Promise<UsageInfo>
+  storage(): Promise<StorageInfo>
+  cleanup(): Promise<StorageInfo>
   checks(): Promise<SetupCheck[]>
   fixCheck(id: string): Promise<void>
   saveSearchKey(key: string): Promise<void>

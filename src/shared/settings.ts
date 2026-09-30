@@ -161,6 +161,20 @@ export const Settings = z.object({
     })
     .prefault({}),
 
+  /** How long Orbit keeps its own logs and records. Your chats, memories and files aren't touched. */
+  storage: z
+    .object({
+      /** Tool-call logs (rotated files). */
+      logDays: z.number().int().min(7).default(90),
+      /** Workflow run history. The latest 20 runs of each workflow are always kept. */
+      workflowRunDays: z.number().int().min(1).default(30),
+      /** Attachment copies, beyond the 30-day limit. */
+      attachmentsMaxMb: z.number().int().min(100).default(1024),
+      /** 0 keeps chats forever. */
+      chatDays: z.number().int().min(0).default(0)
+    })
+    .prefault({}),
+
   ui: z
     .object({
       barPosition: z.enum(['cursor', 'center']).default('center'),

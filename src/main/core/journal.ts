@@ -1,5 +1,3 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
 import { EventEmitter } from 'node:events'
 import { getDb, now } from './db'
 import type { FileOp } from './userFiles'
@@ -10,7 +8,8 @@ import type { FileOp } from './userFiles'
 // those are covered by approvals and the audit log.
 
 export type Undo =
-  | { kind: 'file'; path: string; previous: string | null }
+  /** A file in Orbit's own folder. snap: backup of the old version; previous: old text (entries from before 0.9). */
+  | { kind: 'file'; path: string; previous: string | null; snap?: string }
   | { kind: 'memory-added'; id: number }
   | { kind: 'memory-removed'; memory: { kind: string; text: string; private: boolean } }
   | { kind: 'memory-edited'; id: number; before: { kind: string; text: string; private: boolean } }
@@ -73,21 +72,11 @@ export function undoChange(id: number, force = false): string {
   return `Undid: ${row.summary}`
 }
 
-// Files are simple enough to handle here.
-const MAX_KEEP = 5 * 1024 * 1024
-
-/** Current contents of a file before overwriting it, or null if it doesn't exist (or is too big to keep). */
-export function snapshot(path: string): string | null {
-  if (!existsSync(path)) return null
-  const buf = readFileSync(path)
-  return buf.length > MAX_KEEP ? null : buf.toString('utf8')
+/** Drops entries older than `days` and keeps at most `max`. Returns how many went. */
+export function pruneJournal(days: number, max = 10_000): number {
+  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString()
+  const d = db()
+  const old = Number(d.prepare('DELETE FROM journal WHERE at < ?').run(cutoff).changes)
+  const extra = Number(d.prepare('DELETE FROM journal WHERE id NOT IN (SELECT id FROM journal ORDER BY id DESC LIMIT ?)').run(max).changes)
+  return old + extra
 }
-
-onUndo('file', (u) => {
-  if (u.kind !== 'file') return
-  if (u.previous === null) rmSync(u.path, { force: true })
-  else {
-    mkdirSync(dirname(u.path), { recursive: true })
-    writeFileSync(u.path, u.previous)
-  }
-})

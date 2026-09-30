@@ -6,6 +6,7 @@ import { settings } from '../settingsStore'
 import { paths } from '../paths'
 import { onUndo, recordChange, UndoConflict } from './journal'
 import { logInfo } from '../log'
+import { ensureRoom } from './disk'
 
 // Changes Orbit makes in your own folders. Only folders you marked writable, never anything
 // else. Before a file is changed, moved or deleted, its bytes are copied to
@@ -99,6 +100,7 @@ function snapName(from: string): string {
 
 /** Copies a file into the snapshot store and returns its name there. */
 export function keepCopy(path: string): string {
+  ensureRoom(statSync(path).size, `back up ${basename(path)} first`)
   const name = snapName(path)
   copyFileSync(path, join(snapDir(), name))
   return name
@@ -118,19 +120,24 @@ function keepByMoving(path: string): string {
   return name
 }
 
-function restoreSnap(snap: string, to: string): void {
+export function restoreSnap(snap: string, to: string): void {
   const src = join(paths.snapshots, snap)
   if (!existsSync(src)) throw new Error(`The backup of ${basename(to)} has expired (backups are kept ${settings.current.files.snapshotDays} days)`)
   mkdirSync(dirname(to), { recursive: true })
   copyFileSync(src, to)
 }
 
-/** Drops backups older than the retention window, then the oldest until under the size cap. */
-export function pruneSnapshots(): void {
+/**
+ * Drops backups older than the retention window, then the oldest until under the size cap.
+ * The cap also shrinks to a tenth of the free space, so backups never crowd out a full disk.
+ */
+export function pruneSnapshots(freeBytes = Number.POSITIVE_INFINITY): number {
   const dir = paths.snapshots
-  if (!existsSync(dir)) return
-  const { snapshotDays, snapshotMaxMb } = settings.current.files
+  if (!existsSync(dir)) return 0
+  const { snapshotDays } = settings.current.files
+  const snapshotMaxMb = Math.min(settings.current.files.snapshotMaxMb, (snapshotBytes() + freeBytes) / 10 / 1024 / 1024)
   const cutoff = Date.now() - snapshotDays * 86_400_000
+  let freed = 0
   const files = readdirSync(dir)
     .map((n) => ({ n, s: statSync(join(dir, n)) }))
     .sort((a, b) => a.s.mtimeMs - b.s.mtimeMs)
@@ -139,7 +146,9 @@ export function pruneSnapshots(): void {
     if (f.s.mtimeMs >= cutoff && total <= snapshotMaxMb * 1024 * 1024) break
     rmSync(join(dir, f.n), { force: true })
     total -= f.s.size
+    freed += f.s.size
   }
+  return freed
 }
 
 export function snapshotBytes(): number {
@@ -189,6 +198,16 @@ export function recordFileOps(summary: string, ops: FileOp[]): void {
 }
 
 // Undo
+
+onUndo('file', (u) => {
+  if (u.kind !== 'file') return
+  if (u.snap) restoreSnap(u.snap, u.path)
+  else if (u.previous === null) rmSync(u.path, { force: true })
+  else {
+    mkdirSync(dirname(u.path), { recursive: true })
+    writeFileSync(u.path, u.previous)
+  }
+})
 
 function sameAs(path: string, hash: string): boolean {
   return existsSync(path) && hashFile(path) === hash

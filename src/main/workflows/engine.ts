@@ -241,7 +241,7 @@ class WorkflowEngine extends EventEmitter {
   }
 
   private finish(id: string, status: RunStatus, output: string | null, error: string | null = null): void {
-    this.db().prepare('UPDATE workflow_runs SET status = ?, output = ?, error = ?, finished_at = ? WHERE id = ?').run(status, output, error, now(), id)
+    this.db().prepare('UPDATE workflow_runs SET status = ?, output = ?, error = ?, finished_at = ? WHERE id = ?').run(status, output && clip(output, 4000), error, now(), id)
     this.emit('change')
   }
 
@@ -278,7 +278,7 @@ class WorkflowEngine extends EventEmitter {
       record('running', {})
       try {
         const { input, output, attempts } = await this.runOne(wf, runId, step, ctx, signal, logId)
-        record('done', { input, output: clip(output), attempts })
+        record('done', { input: input && clip(input, 4000), output: clip(output, 4000), attempts })
         ctx.steps[step.id] = { output }
         last = output
       } catch (err) {

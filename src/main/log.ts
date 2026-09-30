@@ -1,4 +1,4 @@
-import { appendFileSync } from 'node:fs'
+import { appendFileSync, renameSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { format } from 'node:util'
 import { dataDir } from './paths'
@@ -8,7 +8,14 @@ import { dataDir } from './paths'
 
 const file = join(dataDir, 'logs', 'main.log')
 
+let lines = 0
 function write(level: string, args: unknown[]): void {
+  try {
+    // At 5 MB the log becomes main.old.log (replacing the previous one), so it stays under 10 MB.
+    if (++lines % 200 === 0 && statSync(file).size > 5 * 1024 * 1024) renameSync(file, file.replace(/\.log$/, '.old.log'))
+  } catch {
+    // no log yet
+  }
   try {
     appendFileSync(file, `${new Date().toISOString()} ${level} ${format(...args)}\n`)
   } catch {

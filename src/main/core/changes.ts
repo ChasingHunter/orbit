@@ -4,20 +4,25 @@ import { paths } from '../paths'
 import { addMemory, deleteMemory, getMemory, updateMemory, type Memory, type MemoryKind } from './memory'
 import { scheduler, type Schedule } from './scheduler'
 import { workflowStore } from '../workflows/store'
-import { onUndo, recordChange, snapshot } from './journal'
+import { onUndo, recordChange } from './journal'
+import { keepCopy } from './userFiles'
+import { ensureRoom } from './disk'
 
 // Changes to Orbit's own things go through here so each one lands in the undo journal.
 // source: "Orbit" when the model did it, "you" when it came from the dashboard.
 
 export function saveOwnFile(path: string, content: string, source = 'Orbit'): void {
-  const previous = snapshot(path)
+  ensureRoom(Buffer.byteLength(content), `save ${basename(path)}`)
+  // The old version goes to the backups (any size), so Undo can always put it back.
+  const snap = existsSync(path) ? keepCopy(path) : undefined
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, content)
-  recordChange(`${previous === null ? 'Created' : 'Overwrote'} ${relative(paths.files, path)}`, { kind: 'file', path, previous }, source)
+  recordChange(`${snap ? 'Overwrote' : 'Created'} ${relative(paths.files, path)}`, { kind: 'file', path, previous: null, snap }, source)
 }
 
 /** Saves a binary file Orbit made. Never overwrites: "report.docx" becomes "report (2).docx". Returns the path used. */
 export function saveOwnBinary(path: string, data: Buffer, source = 'Orbit'): string {
+  ensureRoom(data.length, `save ${basename(path)}`)
   let target = path
   for (let n = 2; existsSync(target); n++) target = join(dirname(path), `${basename(path, extname(path))} (${n})${extname(path)}`)
   mkdirSync(dirname(target), { recursive: true })

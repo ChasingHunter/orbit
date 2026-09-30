@@ -24,6 +24,7 @@ import { triggers } from './workflows/triggers'
 import { scheduler } from './core/scheduler'
 import type { PermissionsInfo, UsageInfo, WorkflowInfo } from '@shared/dash'
 import { snapshotBytes } from './core/userFiles'
+import { runCleanup, storageReport } from './core/housekeeping'
 import { bundledClaudeVersion, findInstalledClaude, installedClaudeVersion, openUrl, runChecks, signInToClaude } from './system/health'
 import { levelDefault, policyOf } from './core/permissions'
 import { backgroundTokensToday, usageSummary } from './core/usage'
@@ -208,6 +209,11 @@ export function registerDashboardIpc(): void {
     }
   })
 
+  ipcMain.handle('dash:storage', () => storageReport())
+  ipcMain.handle('dash:cleanup', () => {
+    runCleanup()
+    return storageReport()
+  })
   ipcMain.handle('dash:checks', () => runChecks())
   ipcMain.handle('dash:fix-check', async (_e, id: string) => {
     const check = (await runChecks()).find((c) => c.id === id)

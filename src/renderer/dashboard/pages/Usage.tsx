@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart3 } from 'lucide-react'
-import type { UsageInfo } from '@shared/dash'
+import type { StorageInfo, UsageInfo } from '@shared/dash'
 import { Button, Card, dash, Empty, inputClass, PageHeader } from '../ui'
 
 // "Counted" tokens: fresh input + cache writes + output. Cache reads are shown separately because
@@ -112,6 +112,49 @@ export function UsagePage(): React.JSX.Element {
           </Card>
         </>
       )}
+      <StorageCard />
     </>
+  )
+}
+
+function size(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  if (bytes < 1024 ** 3) return `${(bytes / 1024 / 1024).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`
+  return `${(bytes / 1024 ** 3).toFixed(1)} GB`
+}
+
+function StorageCard(): React.JSX.Element {
+  const [s, setS] = useState<StorageInfo | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => void dash.storage().then(setS), [])
+  if (!s) return <></>
+  return (
+    <Card className="mt-4 p-5">
+      <div className="mb-1 flex items-center justify-between">
+        <div className="text-sm font-medium text-zinc-100">Storage</div>
+        <Button
+          onClick={() => {
+            setBusy(true)
+            void dash.cleanup().then((r) => (setS(r), setBusy(false)))
+          }}
+        >
+          {busy ? 'Cleaning up…' : 'Clean up now'}
+        </Button>
+      </div>
+      <p className="mb-3 text-xs text-zinc-500">
+        {size(s.total)} in all, {size(s.free)} free on this drive. Old logs, backups and attachment copies are removed automatically every day; your chats, memories and files
+        aren't.
+        {s.last && ` Last cleanup ${new Date(s.last.at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} freed ${size(s.last.freed)}.`}
+      </p>
+      <div className="divide-y divide-white/[0.05] text-sm">
+        {s.items.map((i) => (
+          <div key={i.id} className="flex items-center gap-3 py-1.5" data-storage={i.id}>
+            <span className="min-w-0 flex-1 truncate text-zinc-300">{i.label}</span>
+            <span className="hidden shrink-0 text-xs text-zinc-500 sm:inline">{i.limit}</span>
+            <span className="w-20 shrink-0 text-right text-zinc-200 tabular-nums">{size(i.bytes)}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
   )
 }
