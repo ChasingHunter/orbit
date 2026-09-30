@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+    <title>Orbit snip</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; cursor: crosshair; user-select: none; background: #000; }
+      #shot { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+      #shade { position: fixed; inset: 0; background: rgb(0 0 0 / 0.35); }
+      #sel { position: fixed; display: none; outline: 2px solid #60a5fa; box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.35); }
+      #hint { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); color: #fff; font: 13px 'Segoe UI', sans-serif;
+              background: rgb(0 0 0 / 0.6); padding: 6px 12px; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <img id="shot" alt="" />
+    <div id="shade"></div>
+    <div id="sel"></div>
+    <div id="hint">Drag to select · Esc to cancel</div>
+    <script type="module" src="./snip.ts"></script>
+  </body>
+</html>
