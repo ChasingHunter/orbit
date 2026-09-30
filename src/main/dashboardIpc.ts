@@ -232,7 +232,7 @@ export function registerDashboardIpc(): void {
       hotkeys: settings.current.hotkeys,
       allowedFolders: settings.current.files.allowedFolders,
       writableFolders: settings.current.files.writableFolders,
-      snapshotMb: Math.round(snapshotBytes() / 1e6),
+      snapshotMb: Math.ceil(snapshotBytes() / 1e6),
       snapshotDays: settings.current.files.snapshotDays,
       voiceMode: settings.current.voice.mode,
       startWithWindows: settings.current.ui.startWithWindows,

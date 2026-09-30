@@ -85,9 +85,11 @@ Say "research the best Postgres hosting for a startup in India, in the backgroun
 
 ## Your files
 
-Orbit can read files in the folders you allow (Downloads and Desktop to start; change them in Settings). It reads PDFs and plain text, so "summarise the PDFs in my Downloads" works, and so does a workflow that reads each new invoice that lands there. It can't read anything outside those folders, even through shortcuts.
+Orbit can read files in the folders you allow (Downloads and Desktop to start; change them in Settings). It reads PDFs, Word, Excel, PowerPoint and any text format, so "summarise the PDFs in my Downloads" works, and so does a workflow that reads each new invoice that lands there. It can't read anything outside those folders, even through shortcuts.
 
-It only changes files in a folder when you turn on "Orbit can change files here" for that folder in Settings. Then it can create, edit, rename, move, copy and delete files there, so "rename the scans in Downloads by invoice number" works. Before any change, the old file is backed up to `%APPDATA%\Orbit\snapshots` (kept 30 days, up to 2 GB), and deleting just moves the file there. A batch like 40 renames is one approval card that lists every change, and one Undo. If you edited a file after Orbit did, Undo tells you and asks before putting the old one back (your newer version gets backed up too). Orbit won't create or rename anything to a type that runs when you open it, like .exe, .bat or .ps1.
+It can't change anything in them either, until you tick "Orbit can change files here" next to a folder. Then it can create, edit, rename, move and delete files there, for example "rename these scans by their invoice number". Before every change the old file is copied to a backup folder (kept 30 days, up to 2 GB), and deleting only moves the file into that backup. A batch of changes shows up as one approval card listing every file, and one Undo puts them all back. If you've edited a file since Orbit touched it, Undo tells you and asks first; your newer version is backed up too, so nothing gets lost either way.
+
+Orbit won't create or rename files to types that run when you open them (.exe, .bat, .ps1, .js, shortcuts and the like), and it only edits text files in place. Until one folder is writable, the model isn't even told these tools exist, so they cost no tokens.
 
 ## Reminders and workflows
 
