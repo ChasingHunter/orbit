@@ -67,6 +67,27 @@ steps:
 `
 )
 
+writeFileSync(
+  join(wfDir, 'code-test.yaml'),
+  String.raw`name: code-test
+steps:
+  - id: news
+    tool: read_saved_file
+    args: { name: news.txt }
+  - id: titles
+    code: |
+      return input.split('\n').filter(l => /^\d+\./.test(l)).map(l => l.replace(/^\d+\.\s*/, '').toUpperCase())
+    input: "{{steps.news.output}}"
+  - id: escape
+    code: |
+      return [typeof process, typeof require, typeof fetch].join(',')
+  - id: save
+    tool: save_file
+    args: { name: code.txt, content: "{{steps.titles.output}}|{{steps.escape.output}}" }
+`
+)
+writeFileSync(join(wfDir, 'code-loop.yaml'), 'name: code-loop\nsteps:\n  - id: spin\n    code: "while (true) {}"\n')
+
 const exe = process.env.ORBIT_EXE ? resolve(process.env.ORBIT_EXE) : undefined
 const app = await electron.launch({
   executablePath: exe,
@@ -94,6 +115,15 @@ check('foreach over a numbered list keeps each item whole', (read('news-1.txt') 
 check('loop iterations logged separately', ids.includes('each[2].save:done') && ids.includes('headlines[2].save:done'))
 check('template branch took then', read('then.txt') === 'took then' && read('else.txt') === null)
 check('model-decided branch said yes', read('payment.txt') === 'payment noted', steps.find((s) => s.step_id === 'is_payment')?.input ?? '')
+
+await app.evaluate(() => globalThis.__orbit.workflows.run('code-test', 'manual'))
+const codeOut = read('code.txt') ?? ''
+check('code step transforms data', codeOut.includes('"RUST 2.0 RELEASED"') && codeOut.includes('"NEW GPU FROM NVIDIA"'), codeOut.replace(/\s+/g, ' '))
+check('code step has no process, require or fetch', codeOut.endsWith('|undefined,undefined,undefined'))
+const t1 = Date.now()
+await app.evaluate(() => globalThis.__orbit.workflows.run('code-loop', 'manual'))
+const loop = await app.evaluate(() => globalThis.__orbit.workflows.runs('code-loop', 1)[0])
+check('runaway code is stopped', loop.status === 'failed' && /longer than 2s/.test(loop.error ?? '') && Date.now() - t1 < 8000, loop.error ?? '')
 
 await app.close()
 process.exit(failed ? 1 : 0)

@@ -10,6 +10,7 @@ import { localNow } from '../core/conversation'
 import { durationMs, stepKind, type Step, type Workflow } from './schema'
 import { workflowStore } from './store'
 import { triggers, type TriggerData } from './triggers'
+import { runCode } from './sandbox'
 import { openDashboard } from '../windows/dashboard'
 
 /** Notification that opens the Workflows page when clicked. */
@@ -341,12 +342,19 @@ class WorkflowEngine extends EventEmitter {
       return { input: `${step.parallel.length} steps at once`, output: outs.join('\n\n'), attempts: 1 }
     }
 
+    if ('code' in step) {
+      const input = step.input ? render(step.input, ctx) : ''
+      const steps = Object.fromEntries(Object.entries(ctx.steps).map(([k, v]) => [k, v.output]))
+      const output = await runCode(step.code, { input, steps, item: ctx.item ?? null, index: ctx.index ?? null, trigger: ctx.trigger })
+      return { input: clip(input, 4000), output, attempts: 1 }
+    }
+
     return this.runStep(wf, step, ctx, signal)
   }
 
   private async runStep(
     wf: Workflow,
-    step: Exclude<Step, { if: unknown } | { foreach: unknown } | { parallel: unknown }>,
+    step: Exclude<Step, { if: unknown } | { foreach: unknown } | { parallel: unknown } | { code: unknown }>,
     ctx: Ctx,
     signal: AbortSignal
   ): Promise<{ input: string; output: string; attempts: number }> {

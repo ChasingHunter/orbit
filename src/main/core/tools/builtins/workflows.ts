@@ -68,6 +68,10 @@ More step types (they contain steps of their own):
     steps: [ ...steps using {{item}} and {{index}} ]
   - id: fetch_all
     parallel: [ ...steps that run at the same time ]
+  - id: top5
+    code: |                                # sandboxed JavaScript: no network or files, 2s limit
+      return input.split('\\n').filter(l => /^\\d+\\./.test(l)).slice(0, 5).join('\\n')
+    input: "{{steps.fetch.output}}"         # also sees steps (id -> output), item, index, trigger
 Rules:
 - To DO something (notify, send, create, post), use a tool step with the exact tool name. An agent step only writes text; it can call tools only if you list them in its tools.
 - approved: true exists only on tool steps. Steps that change things and aren't approved: true ask for approval every run.

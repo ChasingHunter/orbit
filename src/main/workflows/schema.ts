@@ -39,7 +39,14 @@ export const ApprovalStep = Base.extend({
   })
 })
 
+/** A small JavaScript function body run in a sandbox; what it returns is the output. */
+export const CodeStep = Base.extend({
+  code: z.string().describe('JS function body; sees input, steps, item, index, trigger; must return a value'),
+  input: z.string().optional()
+})
+
 type ToolStepT = z.infer<typeof ToolStep>
+type CodeStepT = z.infer<typeof CodeStep>
 type AgentStepT = z.infer<typeof AgentStep>
 type ApprovalStepT = z.infer<typeof ApprovalStep>
 type BaseT = z.infer<typeof Base>
@@ -57,7 +64,7 @@ export type ForEachStepT = BaseT & {
 /** Run the inner steps at the same time. */
 export type ParallelStepT = BaseT & { parallel: Step[] }
 
-export type Step = ToolStepT | AgentStepT | ApprovalStepT | IfStepT | ForEachStepT | ParallelStepT
+export type Step = ToolStepT | AgentStepT | ApprovalStepT | CodeStepT | IfStepT | ForEachStepT | ParallelStepT
 
 // Loosely typed on purpose: nested steps are recursive, which zod can't infer on its own.
 const Steps = z.array(z.lazy((): z.ZodType<Step> => Step as z.ZodType<Step>))
@@ -78,9 +85,9 @@ export const ForEachStep = Base.extend({
 
 export const ParallelStep = Base.extend({ parallel: Steps })
 
-export const Step: z.ZodType<Step> = z.union([ToolStep, AgentStep, ApprovalStep, IfStep, ForEachStep, ParallelStep]) as z.ZodType<Step>
+export const Step: z.ZodType<Step> = z.union([ToolStep, AgentStep, ApprovalStep, CodeStep, IfStep, ForEachStep, ParallelStep]) as z.ZodType<Step>
 
-const KINDS = { tool: ToolStep, agent: AgentStep, approval: ApprovalStep, if: IfStep, foreach: ForEachStep, parallel: ParallelStep }
+const KINDS = { tool: ToolStep, agent: AgentStep, approval: ApprovalStep, code: CodeStep, if: IfStep, foreach: ForEachStep, parallel: ParallelStep }
 type Kind = keyof typeof KINDS
 
 /**
@@ -159,8 +166,9 @@ export const Workflow = z
 
 export type Workflow = z.infer<typeof Workflow>
 
-export function stepKind(s: Step): 'tool' | 'agent' | 'approval' | 'if' | 'foreach' | 'parallel' {
+export function stepKind(s: Step): 'tool' | 'agent' | 'approval' | 'code' | 'if' | 'foreach' | 'parallel' {
   if ('tool' in s) return 'tool'
+  if ('code' in s) return 'code'
   if ('agent' in s) return 'agent'
   if ('if' in s) return 'if'
   if ('foreach' in s) return 'foreach'

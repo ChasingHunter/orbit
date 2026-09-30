@@ -18,6 +18,7 @@
     "@ai-sdk/anthropic": "4.0.69",
     "@ai-sdk/openai-compatible": "3.0.60",
     "@anthropic-ai/claude-agent-sdk": "0.3.285",
+    "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
     "@modelcontextprotocol/sdk": "1.31.0",
     "@mozilla/readability": "0.6.0",
     "ai": "7.0.123",
@@ -26,6 +27,7 @@
     "linkedom": "0.18.13",
     "lucide-react": "1.49.0",
     "marked": "18.0.14",
+    "quickjs-emscripten-core": "0.32.0",
     "selection-hook": "2.1.1",
     "sherpa-onnx-node": "1.13.8",
     "yaml": "2.9.1",
@@ -68,7 +70,8 @@
       "**/node_modules/sherpa-onnx-win-x64/**",
       "**/node_modules/koffi/**",
       "**/node_modules/@koromix/**",
-      "**/node_modules/selection-hook/**"
+      "**/node_modules/selection-hook/**",
+      "**/node_modules/@jitl/**"
     ],
     "npmRebuild": false,
     "win": {
