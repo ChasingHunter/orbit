@@ -20,7 +20,7 @@ export const saveFile = defineTool({
     name: z.string().describe('File name, e.g. digests/2026-10-01.md'),
     content: z.string()
   },
-  sideEffect: false, // confined to Orbit's own folder
+  risk: 'local', // confined to Orbit's own folder
   run: async ({ name, content }) => {
     const file = inFiles(name)
     mkdirSync(dirname(file), { recursive: true })
@@ -33,7 +33,7 @@ export const readSavedFile = defineTool({
   name: 'read_saved_file',
   description: "Read a file from Orbit's files folder, or list the folder when name is empty.",
   input: { name: z.string().optional() },
-  sideEffect: false,
+  risk: 'read',
   run: async ({ name }) => {
     if (!name) {
       const walk = (dir: string): string[] =>

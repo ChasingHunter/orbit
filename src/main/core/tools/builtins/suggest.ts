@@ -20,7 +20,7 @@ export const suggestMemory = defineTool({
       .string()
       .describe('One self-contained sentence in the user\'s own voice, first person, e.g. "My dentist is Dr. Mehta at Smile Care, 022 5555 0100" or "Sam is my cofounder"')
   },
-  sideEffect: false,
+  risk: 'read',
   run: async ({ text }) => {
     const reason = secretReason(text)
     if (reason) return `Not offered: it looks like ${reason}, which Orbit never stores.`

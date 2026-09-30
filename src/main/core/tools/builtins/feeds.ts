@@ -46,7 +46,7 @@ export const readFeed = defineTool({
     limit: z.number().int().min(1).max(100).optional().describe('Max items, default 20'),
     sinceHours: z.number().min(1).max(24 * 30).optional().describe('Only items newer than this many hours')
   },
-  sideEffect: false,
+  risk: 'read',
   run: async ({ url, limit = 20, sinceHours }, { signal }) => {
     const res = await fetch(url, { signal, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Orbit/0.3', Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml' } })
     if (!res.ok) throw new Error(`Feed request failed: ${res.status} ${res.statusText}`)

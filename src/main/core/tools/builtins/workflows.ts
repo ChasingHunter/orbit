@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { requestApproval } from '../../approvals'
+import { needsApproval } from '../registry'
 import { nextRunFor, scheduler } from '../../scheduler'
 import { explain, parseWorkflow, workflowStore } from '../../../workflows/store'
 import { workflows } from '../../../workflows/engine'
@@ -65,7 +66,7 @@ export const workflowGuide = defineTool({
   name: 'workflow_guide',
   description: 'Returns the YAML format for workflows (triggers, steps, branches, loops, code). Read it before calling create_workflow.',
   input: {},
-  sideEffect: false,
+  risk: 'read',
   run: async () => SPEC
 })
 
@@ -74,7 +75,10 @@ export const createWorkflow = defineTool({
   description:
     "Create or replace a saved workflow that runs on a schedule, on an event, or on demand. Call workflow_guide first for the YAML format, and list_integrations so tool names match what's connected. The user sees the YAML and must approve it before it's saved.",
   input: { yaml: z.string().describe('The whole workflow as YAML') },
-  sideEffect: false, // approval happens below, after validation, so the user never approves YAML that won't load
+  // Can set up unattended automation, so it's treated like acting outside Orbit. It asks itself,
+  // after validating, so you never approve YAML that won't load.
+  risk: 'external',
+  selfApproves: true,
   run: async ({ yaml }, { signal }) => {
     let name: string
     yaml = yaml.replace(/mcp__orbit__/g, '')
@@ -90,8 +94,10 @@ export const createWorkflow = defineTool({
       throw new Error(`That YAML isn't valid: ${explain(err)}. Check workflow_guide and try again.`)
     }
     const exists = !!workflowStore.get(name)
-    const ok = await requestApproval({ tool: 'create_workflow', title: `${exists ? 'Replace' : 'Save'} workflow "${name}"`, input: { yaml } }, signal)
-    if (!ok) return 'The user declined. Nothing was saved.'
+    if (needsApproval('create_workflow', 'external')) {
+      const ok = await requestApproval({ tool: 'create_workflow', title: `${exists ? 'Replace' : 'Save'} workflow "${name}"`, input: { yaml } }, signal)
+      if (!ok) return 'The user declined. Nothing was saved.'
+    }
     const wf = workflowStore.save(yaml)
     workflows.sync()
     const s = scheduler.list(true, 'workflow').find((x) => x.id === `wf:${wf.name}`)
@@ -104,7 +110,7 @@ export const listWorkflows = defineTool({
   name: 'list_workflows',
   description: 'List saved workflows with their schedule, status and last run.',
   input: {},
-  sideEffect: false,
+  risk: 'read',
   run: async () => {
     const all = workflowStore.list()
     if (!all.length) return 'No workflows yet.'
@@ -124,7 +130,7 @@ export const runWorkflow = defineTool({
   name: 'run_workflow',
   description: 'Run a saved workflow now and return its result. Steps that change things still ask for approval unless pre-approved.',
   input: { name: z.string(), input: z.string().optional().describe('Available to the workflow as {{input}}') },
-  sideEffect: false,
+  risk: 'local',
   run: async ({ name, input }) => {
     const id = await workflows.run(name, 'manual', input ?? '')
     const run = workflows.runs(name, 5).find((r) => r.id === id)
@@ -137,7 +143,7 @@ export const deleteWorkflow = defineTool({
   name: 'delete_workflow',
   description: 'Delete a saved workflow and its schedule.',
   input: { name: z.string() },
-  sideEffect: true,
+  risk: 'local',
   describe: ({ name }) => `Delete workflow "${name}"`,
   run: async ({ name }) => {
     if (!workflowStore.get(name)) return `No workflow named "${name}".`

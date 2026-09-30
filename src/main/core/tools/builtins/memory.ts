@@ -10,7 +10,7 @@ export const remember = defineTool({
     text: z.string().describe('One self-contained fact, e.g. "Sam is my cofounder; email sam@example.com; prefers WhatsApp"'),
     kind: z.enum(MEMORY_KINDS).optional().describe('Default: note')
   },
-  sideEffect: false,
+  risk: 'local',
   run: async ({ text, kind }) => {
     const m = addMemory(text, kind)
     return `Saved as memory #${m.id}.`
@@ -21,7 +21,7 @@ export const recall = defineTool({
   name: 'recall',
   description: "Search the user's saved memories (people, preferences, projects, notes).",
   input: { query: z.string().describe('Words to search for, e.g. "Sam email"') },
-  sideEffect: false,
+  risk: 'read',
   run: async ({ query }) => {
     const found = searchMemories(query, 10)
     if (!found.length) return 'No matching memories.'
@@ -33,7 +33,7 @@ export const forget = defineTool({
   name: 'forget',
   description: 'Delete a saved memory by its id (find it with recall first).',
   input: { id: z.number().int() },
-  sideEffect: true,
+  risk: 'local',
   describe: ({ id }) => {
     const m = getMemory(id)
     return m ? `Forget: "${m.text}"` : `Forget memory #${id}`

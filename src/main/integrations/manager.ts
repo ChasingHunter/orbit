@@ -196,7 +196,8 @@ class IntegrationManager extends EventEmitter {
           name: toolName(id, t.name),
           description: `[${l.config.name}] ${t.description ?? t.title ?? t.name}`.slice(0, 1024),
           input: toShape(t.inputSchema),
-          sideEffect: !readOnly,
+          // The server's own labels decide the risk: read-only, destructive, or acting in the service.
+          risk: readOnly ? 'read' : t.annotations?.destructiveHint === true ? 'destructive' : 'external',
           describe: () => `${l.config.name}: ${t.annotations?.title ?? t.title ?? t.name}`,
           run: async (input, { signal }) => {
             const res = await client.callTool({ name: t.name, arguments: input as Record<string, unknown> }, undefined, {

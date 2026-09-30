@@ -10,7 +10,7 @@ export const askUserTool = defineTool({
     question: z.string().describe('One clear question'),
     options: z.array(z.string()).max(5).optional().describe('Suggested answers shown as buttons; the user can also type their own')
   },
-  sideEffect: false,
+  risk: 'read',
   run: async ({ question, options }, { signal }) => {
     const answer = await askUser({ question, options: options ?? [], from: 'Background job' }, signal)
     return answer === null ? 'No answer (the user did not reply in time). Continue with your best judgement or stop and explain.' : `The user answered: ${answer}`

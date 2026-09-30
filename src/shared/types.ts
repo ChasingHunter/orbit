@@ -24,6 +24,8 @@ export type ApprovalRequest = {
   tool: string
   title: string
   input: unknown
+  /** Offer "Allow for this chat" (not for workflow reviews). */
+  allowChat?: boolean
 }
 
 /** State pushed from main to the bar window. */
@@ -50,7 +52,7 @@ export interface OrbitApi {
   submit(text: string, context: ContextItem[], opts?: { quick?: boolean }): Promise<{ turnId: string }>
   cancel(): void
   newChat(): void
-  approve(id: string, approved: boolean): void
+  approve(id: string, decision: 'once' | 'chat' | 'deny'): void
   answer(id: string, text: string): void
   saveMemory(text: string): Promise<void>
   speak(text: string): void

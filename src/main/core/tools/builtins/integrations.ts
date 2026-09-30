@@ -15,7 +15,7 @@ export const listIntegrations = defineTool({
   description:
     "List the user's connected services (Notion, Slack, Gmail, etc.) and their status. Call this before saying you can't do something that needs an outside service, and tell the user to connect it in Orbit's dashboard if it's missing.",
   input: {},
-  sideEffect: false,
+  risk: 'read',
   run: async () => {
     const states = integrations.states()
     if (!states.length) return 'No services are connected yet. The user can add them in the Orbit dashboard under Integrations.'

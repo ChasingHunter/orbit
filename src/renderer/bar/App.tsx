@@ -302,8 +302,8 @@ export function App(): React.JSX.Element {
     }
   }
 
-  const decide = (id: string, ok: boolean): void => {
-    api.approve(id, ok)
+  const decide = (id: string, decision: 'once' | 'chat' | 'deny'): void => {
+    api.approve(id, decision)
     setApprovals((a) => a.filter((r) => r.id !== id))
   }
 
@@ -684,7 +684,7 @@ function QuestionCard(props: { q: Question; onAnswer: (text: string) => void }):
   )
 }
 
-function ApprovalCard(props: { req: ApprovalRequest; onDecide: (id: string, ok: boolean) => void }): React.JSX.Element {
+function ApprovalCard(props: { req: ApprovalRequest; onDecide: (id: string, decision: 'once' | 'chat' | 'deny') => void }): React.JSX.Element {
   const { req, onDecide } = props
   return (
     <div className="rounded-xl border border-amber-400/25 bg-amber-400/[0.05] p-3">
@@ -704,13 +704,22 @@ function ApprovalCard(props: { req: ApprovalRequest; onDecide: (id: string, ok: 
       </dl>
       <div className="mt-2.5 flex gap-2">
         <button
-          onClick={() => onDecide(req.id, true)}
+          onClick={() => onDecide(req.id, 'once')}
           className="flex items-center gap-1.5 rounded-lg bg-amber-400 px-3 py-1 text-xs font-medium text-zinc-950 hover:bg-amber-300"
         >
           <Check size={13} /> Approve
         </button>
+        {req.allowChat && (
+          <button
+            onClick={() => onDecide(req.id, 'chat')}
+            title={`Don't ask again for ${req.tool} until this chat ends`}
+            className="flex items-center gap-1.5 rounded-lg border border-amber-400/40 px-3 py-1 text-xs text-amber-200 hover:bg-amber-400/10"
+          >
+            Allow for this chat
+          </button>
+        )}
         <button
-          onClick={() => onDecide(req.id, false)}
+          onClick={() => onDecide(req.id, 'deny')}
           className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1 text-xs text-zinc-300 hover:bg-white/10"
         >
           <X size={13} /> Deny

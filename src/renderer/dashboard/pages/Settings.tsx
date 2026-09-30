@@ -24,7 +24,7 @@ export function SettingsPage(): React.JSX.Element {
     <>
       <PageHeader
         title="Settings"
-        subtitle="The common ones. Everything else, like tool permissions and quick actions, is in settings.json and applies as soon as you save."
+        subtitle="The common ones. Permissions have their own page; the rest, like quick actions, is in settings.json and applies as soon as you save."
         actions={
           <>
             <Button icon={FileCog} onClick={() => void dash.openPath('settings')}>

@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 import type { ContextItem } from '@shared/types'
+import type { Risk } from '../permissions'
 
 export type ToolContext = {
   signal: AbortSignal
@@ -15,8 +16,10 @@ export interface OrbitTool<S extends z.ZodRawShape = z.ZodRawShape> {
   name: string
   description: string
   input: S
-  /** true = changes the world (send/post/write/delete). Default policy: ask. */
-  sideEffect: boolean
+  /** What it can change; the autonomy level decides from this whether it asks first. */
+  risk: Risk
+  /** Asks for approval itself (after validating its input) instead of the registry asking. */
+  selfApproves?: boolean
   /** One-line summary shown on the approval card. */
   describe?: (input: z.infer<z.ZodObject<S>>) => string
   run: (input: z.infer<z.ZodObject<S>>, ctx: ToolContext) => Promise<string>

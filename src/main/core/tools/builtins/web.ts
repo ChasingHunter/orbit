@@ -14,7 +14,7 @@ export const webSearch = defineTool({
     query: z.string().describe('Search query'),
     count: z.number().int().min(1).max(20).optional().describe('Number of results (default 8)')
   },
-  sideEffect: false,
+  risk: 'read',
   run: async ({ query, count = 8 }, { signal }) => {
     const provider = settings.current.tools.webSearch.provider
     const key = getSecret(provider)
@@ -74,7 +74,7 @@ export const webFetch = defineTool({
     url: z.string().url(),
     maxChars: z.number().int().min(1000).max(60000).optional().describe('Default 20000')
   },
-  sideEffect: false,
+  risk: 'read',
   run: async ({ url, maxChars = 20000 }, { signal }) => {
     let { text, title } = await fetchPageText(url, signal)
     if (text.length > maxChars) text = text.slice(0, maxChars) + '\n…[truncated]'

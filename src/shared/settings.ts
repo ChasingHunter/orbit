@@ -72,6 +72,16 @@ export const Settings = z.object({
     })
     .prefault({}),
 
+  permissions: z
+    .object({
+      /**
+       * strict: ask before every tool, even reads. careful: ask before anything that acts outside
+       * Orbit. trusted: ask only before destructive actions. full: never ask.
+       */
+      level: z.enum(['strict', 'careful', 'trusted', 'full']).default('careful')
+    })
+    .prefault({}),
+
   tools: z
     .object({
       // Per-tool override; tools not listed use their own default policy.

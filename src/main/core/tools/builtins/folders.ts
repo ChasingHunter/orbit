@@ -57,7 +57,7 @@ export const listFolder = defineTool({
     path: z.string().optional().describe('Full path, or a path inside an allowed folder'),
     pattern: z.string().optional().describe('e.g. *.pdf')
   },
-  sideEffect: false,
+  risk: 'read',
   run: async ({ path, pattern }) => {
     if (!path) return `Allowed folders:\n${allowedFolders().join('\n') || '(none)'}`
     const dir = checked(path)
@@ -90,7 +90,7 @@ export const readFile = defineTool({
     path: z.string().describe('Full path, or a path inside an allowed folder'),
     maxChars: z.number().int().min(1000).max(100_000).optional().describe('Default 30000')
   },
-  sideEffect: false,
+  risk: 'read',
   run: async ({ path, maxChars = 30_000 }) => {
     const file = checked(path)
     const size = statSync(file).size

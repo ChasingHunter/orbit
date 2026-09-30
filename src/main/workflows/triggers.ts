@@ -4,7 +4,7 @@ import { basename, join } from 'node:path'
 import { createServer, type Server } from 'node:http'
 import { powerMonitor } from 'electron'
 import { getDb, now } from '../core/db'
-import { callTool, hasSideEffect } from '../core/tools/registry'
+import { callTool, riskOf } from '../core/tools/registry'
 import { parseFeed } from '../core/tools/builtins/feeds'
 import { fetchPageText } from '../core/tools/builtins/web'
 import { durationMs, triggerKind, type Trigger, type Workflow } from './schema'
@@ -115,7 +115,7 @@ class TriggerManager {
     const config = JSON.stringify(trigger)
     if ('feed' in trigger || 'page' in trigger || 'poll' in trigger) {
       const every = durationMs('feed' in trigger ? trigger.feed.every : 'page' in trigger ? trigger.page.every : trigger.poll.every)
-      if ('poll' in trigger && hasSideEffect(trigger.poll.tool) !== false) {
+      if ('poll' in trigger && riskOf(trigger.poll.tool) !== 'read') {
         throw new Error(`"${trigger.poll.tool}" isn't a read-only tool that's connected, so it can't be polled`)
       }
       let busy = false

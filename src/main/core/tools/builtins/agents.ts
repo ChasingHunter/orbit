@@ -13,7 +13,7 @@ export const startBackgroundTask = defineTool({
     instructions: z.string().describe('Everything the agent needs to know and what to deliver'),
     model: purpose
   },
-  sideEffect: false,
+  risk: 'local',
   run: async ({ title, instructions, model }) => {
     const id = tasks.start(title, instructions, model ?? 'research')
     return `Started background task "${title}" (id ${id.slice(0, 8)}). The user will get a notification when it's done.`
@@ -31,7 +31,7 @@ export const spawnAgents = defineTool({
       .max(4),
     model: purpose
   },
-  sideEffect: false,
+  risk: 'local',
   run: async ({ agents, model }, { signal }) => {
     const results = await Promise.allSettled(agents.map((a) => runAgent(a.instructions, model ?? 'chat', signal)))
     return results

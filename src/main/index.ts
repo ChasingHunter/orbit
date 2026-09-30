@@ -9,6 +9,7 @@ import { settings } from './settingsStore'
 import { setSecret } from './secrets'
 import { Conversation } from './core/conversation'
 import { denyAllApprovals, resolveApproval, setApprovalPresenter } from './core/approvals'
+import { clearChatAllows } from './core/permissions'
 import { answerQuestion, setQuestionPresenter } from './core/questions'
 import { getConversation } from './core/history'
 import { setMemorySuggestionPresenter } from './core/tools/builtins/suggest'
@@ -148,6 +149,7 @@ async function onScreenshot(): Promise<void> {
 }
 
 function onPanic(): void {
+  clearChatAllows()
   stopSpeaking()
   conversation.cancel()
   tasks.cancelAll()
@@ -211,8 +213,11 @@ function registerIpc(): void {
     return { turnId: conversation.submit(text, context, opts) }
   })
   ipcMain.on('bar:cancel', () => conversation.cancel())
-  ipcMain.on('bar:new', () => conversation.reset())
-  ipcMain.on('bar:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
+  ipcMain.on('bar:new', () => {
+    clearChatAllows()
+    conversation.reset()
+  })
+  ipcMain.on('bar:approve', (_e, id: string, decision: 'once' | 'chat' | 'deny') => resolveApproval(id, decision))
   ipcMain.on('bar:answer', (_e, id: string, text: string) => answerQuestion(id, text))
   ipcMain.handle('bar:save-memory', (_e, text: string) => void addMemory(text))
   ipcMain.handle('dash:set-hotkey', (_e, action: 'bar' | 'screenshot' | 'panic', accel: string) => {

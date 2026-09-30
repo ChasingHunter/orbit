@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { DashSettings } from '@shared/dash'
-import { BarChart3, Brain, History, ListChecks, Plug, ScrollText, Settings as SettingsIcon, Workflow, type LucideIcon } from 'lucide-react'
+import { BarChart3, Brain, History, ListChecks, Plug, ScrollText, Settings as SettingsIcon, ShieldCheck, Workflow, type LucideIcon } from 'lucide-react'
 import type { DashPage } from '@shared/dash'
 import { dash } from './ui'
 import { TasksPage } from './pages/Tasks'
@@ -11,6 +11,7 @@ import { HistoryPage } from './pages/History'
 import { SettingsPage } from './pages/Settings'
 import { LogsPage } from './pages/Logs'
 import { UsagePage } from './pages/Usage'
+import { PermissionsPage } from './pages/Permissions'
 
 const NAV: { id: DashPage; label: string; icon: LucideIcon }[] = [
   { id: 'tasks', label: 'Tasks', icon: ListChecks },
@@ -20,6 +21,7 @@ const NAV: { id: DashPage; label: string; icon: LucideIcon }[] = [
   { id: 'history', label: 'History', icon: History },
   { id: 'usage', label: 'Usage', icon: BarChart3 },
   { id: 'logs', label: 'Logs', icon: ScrollText },
+  { id: 'permissions', label: 'Permissions', icon: ShieldCheck },
   { id: 'settings', label: 'Settings', icon: SettingsIcon }
 ]
 
@@ -84,6 +86,7 @@ export function App(): React.JSX.Element {
           {page === 'history' && <HistoryPage />}
           {page === 'usage' && <UsagePage />}
           {page === 'logs' && <LogsPage />}
+          {page === 'permissions' && <PermissionsPage />}
           {page === 'settings' && <SettingsPage />}
         </div>
       </main>

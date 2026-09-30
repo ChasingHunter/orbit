@@ -103,7 +103,20 @@ export type UsageInfo = {
   backgroundLimit: number
 }
 
-export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'usage' | 'logs' | 'settings'
+export type PermissionsInfo = {
+  level: 'strict' | 'careful' | 'trusted' | 'full'
+  tools: {
+    name: string
+    description: string
+    risk: 'read' | 'local' | 'external' | 'destructive'
+    policy: 'ask' | 'always' | 'never'
+    from: 'override' | 'level'
+    /** What the level alone would do. */
+    levelPolicy: 'ask' | 'always' | 'never'
+  }[]
+}
+
+export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'usage' | 'logs' | 'permissions' | 'settings'
 
 export interface DashApi {
   onChanged(cb: (what: 'integrations' | 'tasks' | 'memory' | 'history' | 'settings' | 'workflows') => void): () => void
@@ -140,6 +153,10 @@ export interface DashApi {
   tools(): Promise<{ name: string; description: string; sideEffect: boolean }[]>
   audit(limit?: number): Promise<AuditItem[]>
   usage(): Promise<UsageInfo>
+  permissions(): Promise<PermissionsInfo>
+  setPermissionLevel(level: PermissionsInfo['level']): Promise<void>
+  /** 'level' removes the override so the tool follows the level again. */
+  setToolPolicy(name: string, policy: 'level' | 'ask' | 'always' | 'never'): Promise<void>
   setBudget(tokensPerDay: number): Promise<void>
   settings(): Promise<DashSettings>
   updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[]; voiceMode?: DashSettings['voiceMode']; startWithWindows?: boolean; autoUpdate?: boolean; speech?: Partial<DashSettings['speech']> }): Promise<void>

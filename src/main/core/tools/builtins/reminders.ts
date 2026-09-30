@@ -11,7 +11,7 @@ export const setReminder = defineTool({
     at: z.string().optional().describe('Local date-time for a one-off reminder, ISO 8601 with offset, e.g. 2026-10-01T09:45:00+05:30'),
     repeat: z.string().optional().describe('Cron pattern for repeating reminders in local time, e.g. "0 9 * * 1-5" for weekdays at 9:00')
   },
-  sideEffect: false,
+  risk: 'local',
   run: async ({ text, at, repeat }) => {
     if (!at && !repeat) throw new Error('Give either "at" or "repeat"')
     const s = scheduler.add({
@@ -30,7 +30,7 @@ export const listReminders = defineTool({
   name: 'list_reminders',
   description: 'List upcoming reminders with their ids.',
   input: {},
-  sideEffect: false,
+  risk: 'read',
   run: async () => {
     const items = scheduler.list(true, 'reminder')
     if (!items.length) return 'No reminders set.'
@@ -47,7 +47,7 @@ export const cancelReminder = defineTool({
   name: 'cancel_reminder',
   description: 'Cancel a reminder by the id from list_reminders (the first 8 characters are enough).',
   input: { id: z.string() },
-  sideEffect: false,
+  risk: 'local',
   run: async ({ id }) => {
     const match = scheduler.list(false, 'reminder').find((s) => s.id.startsWith(id))
     if (!match) return `No reminder with id ${id}.`

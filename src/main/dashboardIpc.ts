@@ -20,7 +20,8 @@ import { TEMPLATES } from './workflows/templates'
 import { describeTrigger } from './workflows/describe'
 import { triggers } from './workflows/triggers'
 import { scheduler } from './core/scheduler'
-import type { UsageInfo, WorkflowInfo } from '@shared/dash'
+import type { PermissionsInfo, UsageInfo, WorkflowInfo } from '@shared/dash'
+import { levelDefault, policyOf } from './core/permissions'
 import { backgroundTokensToday, usageSummary } from './core/usage'
 import { toValidYaml } from './workflows/validate'
 import { allTools } from './core/tools/registry'
@@ -118,7 +119,7 @@ export function registerDashboardIpc(): void {
     return workflow.name
   })
   ipcMain.handle('dash:tools', () =>
-    allTools().map((t) => ({ name: t.name, description: t.description.slice(0, 200), sideEffect: t.sideEffect }))
+    allTools().map((t) => ({ name: t.name, description: t.description.slice(0, 200), sideEffect: t.risk !== 'read' }))
   )
   ipcMain.handle('dash:template-add', (_e, id: string) => {
     const t = TEMPLATES.find((x) => x.id === id)
@@ -148,6 +149,28 @@ export function registerDashboardIpc(): void {
   ipcMain.handle('dash:set-budget', (_e, n: number) =>
     settings.update((d) => {
       d.budget.backgroundDailyTokens = Math.max(0, Math.round(n))
+    })
+  )
+
+  ipcMain.handle(
+    'dash:permissions',
+    (): PermissionsInfo => ({
+      level: settings.current.permissions.level,
+      tools: allTools().map((t) => {
+        const { policy, from } = policyOf(t.name, t.risk)
+        return { name: t.name, description: t.description.replace(/^\[[^\]]+\]\s*/, '').slice(0, 140), risk: t.risk, policy, from, levelPolicy: levelDefault(t.risk) }
+      })
+    })
+  )
+  ipcMain.handle('dash:permission-level', (_e, level: PermissionsInfo['level']) =>
+    settings.update((d) => {
+      d.permissions.level = level
+    })
+  )
+  ipcMain.handle('dash:tool-policy', (_e, name: string, policy: 'level' | 'ask' | 'always' | 'never') =>
+    settings.update((d) => {
+      if (policy === 'level') delete d.tools.policy[name]
+      else d.tools.policy[name] = policy
     })
   )
 
