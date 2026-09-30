@@ -45,6 +45,20 @@ export function SettingsPage(): React.JSX.Element {
         </div>
       </Section>
 
+      {s.installedClaude && (
+        <Section title="Claude Code" hint={`You also have Claude Code ${s.installedClaudeVersion ?? ''} installed. Orbit can use it instead of its own copy (${s.bundledClaudeVersion}), so only one copy runs. The bundled one is the version Orbit was tested with; yours updates itself and could move to one that wasn't.`}>
+          <select
+            value={s.claudeExecutable}
+            onChange={(e) => void dash.updateSettings({ claudeExecutable: e.target.value as 'bundled' | 'installed' })}
+            className={selectClass}
+            aria-label="Claude Code to use"
+          >
+            <option value="bundled">Orbit's own copy (tested version)</option>
+            <option value="installed">My installed Claude Code</option>
+          </select>
+        </Section>
+      )}
+
       <Section title="Voice" hint="Which speech-to-text Orbit uses when you talk to the bar.">
         <div className="flex flex-wrap items-center gap-3">
           <select

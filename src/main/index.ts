@@ -31,7 +31,8 @@ import { callTool, runnableTools } from './core/tools/registry'
 import { recentChanges, undoChange } from './core/journal'
 import { z } from 'zod'
 import { browserUrl, startBrowserUrlHelper, stopBrowserUrlHelper } from './os/browserUrl'
-import { registerDashboardIpc } from './dashboardIpc'
+import { registerDashboardIpc, setVoiceInstaller } from './dashboardIpc'
+import { claudeStatus, runChecks } from './system/health'
 import { openDashboard } from './windows/dashboard'
 import { pasteInto } from './os/writeback'
 import { acceleratorKey, foregroundWindow, isKeyDown, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
@@ -285,6 +286,7 @@ app.whenReady().then(() => {
 
   registerIpc()
   registerDashboardIpc()
+  setVoiceInstaller(() => voice.install())
   void integrations.startAll()
   tasks.markInterrupted()
   scheduler.register(
@@ -327,7 +329,7 @@ app.whenReady().then(() => {
   })
   if (process.env.ORBIT_E2E) {
     // Test hook for scripts/e2e.ts; never set in normal runs.
-    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, speaker, recentChanges, undoChange,
+    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, runChecks, speaker, recentChanges, undoChange,
       measureTools: () => runnableTools(() => []).map((t) => ({ name: t.name, chars: t.description.length + JSON.stringify(z.toJSONSchema(z.object(t.input))).length })),
       callTool: (name: string, input: unknown) => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [] }) } })
     return
@@ -337,6 +339,11 @@ app.whenReady().then(() => {
   rebindHotkeys()
   applyStartWithWindows()
   startAutoUpdates()
+  // First run on a new PC: walk through sign-in before anything else.
+  void claudeStatus().then((s) => {
+    const usesClaude = Object.values(settings.current.models).some((m) => typeof m === 'string' && m.startsWith('claude:'))
+    if (!s.loggedIn && usesClaude) openDashboard('setup')
+  })
   warmUpSpeech()
   scheduler.start()
   warmUp()

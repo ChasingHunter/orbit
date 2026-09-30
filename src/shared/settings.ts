@@ -72,6 +72,16 @@ export const Settings = z.object({
     })
     .prefault({}),
 
+  claude: z
+    .object({
+      /**
+       * bundled: the Claude Code copy that ships with Orbit, pinned to a tested version.
+       * installed: the claude you installed yourself (on PATH), so only one copy exists.
+       */
+      executable: z.enum(['bundled', 'installed']).default('bundled')
+    })
+    .prefault({}),
+
   permissions: z
     .object({
       /**

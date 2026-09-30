@@ -49,6 +49,11 @@ export type DashSettings = {
   startWithWindows: boolean
   autoUpdate: boolean
   version: string
+  claudeExecutable: 'bundled' | 'installed'
+  /** Path of a Claude Code you installed yourself, if there is one. */
+  installedClaude: string | null
+  installedClaudeVersion: string | null
+  bundledClaudeVersion: string | null
   speech: { engine: 'off' | 'pocket' | 'windows'; when: 'voice' | 'always'; voice: string }
   voices: string[]
 }
@@ -96,6 +101,15 @@ export type TemplateInfo = { id: string; title: string; summary: string; install
 
 export type AuditItem = { at: string; tool: string; decision: 'allowed' | 'approved' | 'denied' | 'blocked'; ok?: boolean; input: unknown; output?: string }
 
+export type SetupCheck = {
+  id: string
+  name: string
+  status: 'ok' | 'missing' | 'optional'
+  detail: string
+  why: string
+  action?: { label: string; kind: 'sign-in' | 'install-voice' | 'url' | 'key'; target?: string }
+}
+
 export type ChangeItem = { id: number; at: string; source: string; summary: string; undone_at: string | null }
 
 export type UsageInfo = {
@@ -118,7 +132,7 @@ export type PermissionsInfo = {
   }[]
 }
 
-export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'usage' | 'logs' | 'permissions' | 'settings'
+export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'usage' | 'logs' | 'permissions' | 'setup' | 'settings'
 
 export interface DashApi {
   onChanged(cb: (what: 'integrations' | 'tasks' | 'memory' | 'history' | 'settings' | 'workflows' | 'logs') => void): () => void
@@ -155,6 +169,9 @@ export interface DashApi {
   tools(): Promise<{ name: string; description: string; sideEffect: boolean }[]>
   audit(limit?: number): Promise<AuditItem[]>
   usage(): Promise<UsageInfo>
+  checks(): Promise<SetupCheck[]>
+  fixCheck(id: string): Promise<void>
+  saveSearchKey(key: string): Promise<void>
   changes(): Promise<ChangeItem[]>
   /** Returns what was undone; throws if it can't be. */
   undo(id: number): Promise<string>
@@ -164,7 +181,7 @@ export interface DashApi {
   setToolPolicy(name: string, policy: 'level' | 'ask' | 'always' | 'never'): Promise<void>
   setBudget(tokensPerDay: number): Promise<void>
   settings(): Promise<DashSettings>
-  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[]; voiceMode?: DashSettings['voiceMode']; startWithWindows?: boolean; autoUpdate?: boolean; speech?: Partial<DashSettings['speech']> }): Promise<void>
+  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[]; voiceMode?: DashSettings['voiceMode']; startWithWindows?: boolean; autoUpdate?: boolean; speech?: Partial<DashSettings['speech']>; claudeExecutable?: 'bundled' | 'installed' }): Promise<void>
   /** Says a short sample with the current speech settings. */
   testSpeech(): Promise<void>
   /** Throws if another app already owns the combination. */

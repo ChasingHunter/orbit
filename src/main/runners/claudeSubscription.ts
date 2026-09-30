@@ -6,8 +6,7 @@ import {
   type SDKMessage,
   type SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
-import { app } from 'electron'
-import { join } from 'node:path'
+import { claudeExecutable } from '../system/health'
 import type { AgentEvent } from '@shared/types'
 import { paths } from '../paths'
 import { settings } from '../settingsStore'
@@ -16,11 +15,6 @@ import type { AgentRunner, RunnerSession, SessionOptions, UserTurn } from './typ
 
 const SERVER = 'orbit'
 
-/** In the installed app the bundled Claude Code binary lives outside the asar archive. */
-function claudeExecutable(): string | undefined {
-  if (!app.isPackaged) return undefined // SDK resolves it from node_modules
-  return join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@anthropic-ai', 'claude-agent-sdk-win32-x64', 'claude.exe')
-}
 
 /**
  * Uses the user's own logged-in Claude Code (via the Agent SDK) purely as model access.

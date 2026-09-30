@@ -23,6 +23,7 @@ import { describeTrigger } from './workflows/describe'
 import { triggers } from './workflows/triggers'
 import { scheduler } from './core/scheduler'
 import type { PermissionsInfo, UsageInfo, WorkflowInfo } from '@shared/dash'
+import { bundledClaudeVersion, findInstalledClaude, installedClaudeVersion, openUrl, runChecks, signInToClaude } from './system/health'
 import { levelDefault, policyOf } from './core/permissions'
 import { backgroundTokensToday, usageSummary } from './core/usage'
 import { toValidYaml } from './workflows/validate'
@@ -36,6 +37,14 @@ type SettingsPatch = {
   startWithWindows?: boolean
   autoUpdate?: boolean
   speech?: Partial<DashSettings['speech']>
+  claudeExecutable?: 'bundled' | 'installed'
+}
+
+let voiceInstall: (() => Promise<void>) | undefined
+
+/** The voice controller owns the download (with progress in the bar). */
+export function setVoiceInstaller(fn: () => Promise<void>): void {
+  voiceInstall = fn
 }
 
 export function registerDashboardIpc(): void {
@@ -184,12 +193,29 @@ export function registerDashboardIpc(): void {
   ipcMain.handle('dash:changes', () => recentChanges(50))
   ipcMain.handle('dash:undo', (_e, id: number) => undoChange(id))
 
+  ipcMain.handle('dash:checks', () => runChecks())
+  ipcMain.handle('dash:fix-check', async (_e, id: string) => {
+    const check = (await runChecks()).find((c) => c.id === id)
+    const a = check?.action
+    if (!a) return
+    if (a.kind === 'sign-in') signInToClaude()
+    else if (a.kind === 'install-voice') void voiceInstall?.()
+    else if (a.kind === 'url' && a.target) openUrl(a.target)
+  })
+  ipcMain.handle('dash:save-search-key', (_e, key: string) => {
+    if (key) setSecret(settings.current.tools.webSearch.provider, key)
+  })
+
   ipcMain.handle('dash:tasks', () => tasks.list())
   ipcMain.handle('dash:task-cancel', (_e, id: string) => tasks.cancel(id))
 
   ipcMain.handle(
     'dash:settings',
-    (): DashSettings => ({
+    async (): Promise<DashSettings> => ({
+      claudeExecutable: settings.current.claude.executable,
+      installedClaude: await findInstalledClaude(),
+      installedClaudeVersion: await installedClaudeVersion(),
+      bundledClaudeVersion: await bundledClaudeVersion(),
       models: settings.current.models,
       providers: Object.keys(settings.current.providers),
       voiceEngine: settings.current.voice.engine,
@@ -214,6 +240,7 @@ export function registerDashboardIpc(): void {
       if (patch.startWithWindows !== undefined) d.ui.startWithWindows = patch.startWithWindows
       if (patch.autoUpdate !== undefined) d.ui.autoUpdate = patch.autoUpdate
       if (patch.speech) Object.assign(d.speech, patch.speech)
+      if (patch.claudeExecutable) d.claude.executable = patch.claudeExecutable
     })
   })
   ipcMain.handle('dash:pick-folder', async () => {
