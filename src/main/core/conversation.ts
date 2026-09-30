@@ -61,13 +61,22 @@ export class Conversation {
     return !!this.abort
   }
 
+  private toolsKey = ''
+
+  /**
+   * Reuses the runner session while the model and tool set stay the same. Connecting a
+   * service mid-chat changes the tools, which needs a fresh session to take effect.
+   */
   private ensureSession(): RunnerSession {
     const ref = settings.current.models.chat
-    if (this.session && this.modelRef === ref) return this.session
+    const tools = this.tools()
+    const key = tools.map((t) => t.name).join(',')
+    if (this.session && this.modelRef === ref && this.toolsKey === key) return this.session
     this.session?.close()
     const { runner, model } = resolveModel(ref)
-    this.session = runner.createSession({ system: systemPrompt(), model, tools: this.tools() })
+    this.session = runner.createSession({ system: systemPrompt(), model, tools })
     this.modelRef = ref
+    this.toolsKey = key
     return this.session
   }
 

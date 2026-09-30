@@ -5,11 +5,12 @@ import { requestApproval } from '../approvals'
 import { audit } from '../audit'
 import type { OrbitTool, RunnableTool, ToolContext } from './types'
 import { builtinTools } from './builtins'
+import { integrations } from '../../integrations/manager'
 
 const MAX_OUTPUT = 40_000
 
 export function allTools(): OrbitTool[] {
-  return builtinTools
+  return [...builtinTools, ...integrations.tools()]
 }
 
 function policyFor(tool: OrbitTool): ToolPolicy {

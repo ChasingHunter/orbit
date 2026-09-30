@@ -27,3 +27,10 @@ export function getSecret(name: string): string | undefined {
 export function listSecretNames(): string[] {
   return Object.keys(read())
 }
+
+export function deleteSecret(name: string): void {
+  const store = read()
+  if (!(name in store)) return
+  delete store[name]
+  writeFileSync(paths.secrets, JSON.stringify(store, null, 2))
+}
