@@ -123,6 +123,19 @@ class Scheduler extends EventEmitter {
     return s
   }
 
+  /** Puts back a schedule exactly as it was (used by undo). */
+  restore(s: Schedule): void {
+    this.db()
+      .prepare(
+        `INSERT OR REPLACE INTO schedules (id, kind, title, payload, cron, run_at, enabled, missed, last_run_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(s.id, s.kind, s.title, s.payload, s.cron, s.run_at, s.enabled, s.missed, s.last_run_at, s.created_at)
+    this.unarm(s.id)
+    if (this.started) this.arm(s)
+    this.emit('change')
+  }
+
   remove(id: string): boolean {
     this.unarm(id)
     const changed = Number(this.db().prepare('DELETE FROM schedules WHERE id = ?').run(id).changes) > 0

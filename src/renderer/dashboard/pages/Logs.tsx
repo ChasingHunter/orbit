@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, RefreshCw, ScrollText, ShieldCheck, X } from 'lucide-react'
-import type { AuditItem } from '@shared/dash'
+import { Check, RefreshCw, RotateCcw, ScrollText, ShieldCheck, X } from 'lucide-react'
+import type { AuditItem, ChangeItem } from '@shared/dash'
 import { Button, Card, dash, Empty, inputClass, PageHeader, selectClass } from '../ui'
 
 export function LogsPage(): React.JSX.Element {
@@ -8,9 +8,22 @@ export function LogsPage(): React.JSX.Element {
   const [tool, setTool] = useState('')
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState<number | null>(null)
-  const load = (): void => void dash.audit(500).then(setItems)
+  const [changes, setChanges] = useState<ChangeItem[]>([])
+  const [undoError, setUndoError] = useState('')
+  const load = (): void => {
+    void dash.audit(500).then(setItems)
+    void dash.changes().then(setChanges)
+  }
 
-  useEffect(load, [])
+  useEffect(() => {
+    load()
+    return dash.onChanged((w) => w === 'logs' && load())
+  }, [])
+
+  const undo = (id: number): void => {
+    setUndoError('')
+    dash.undo(id).then(load, (err: Error) => setUndoError(err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')))
+  }
 
   const tools = useMemo(() => [...new Set(items.map((i) => i.tool))].sort(), [items])
   const shown = useMemo(() => {
@@ -29,6 +42,32 @@ export function LogsPage(): React.JSX.Element {
           </Button>
         }
       />
+      {changes.length > 0 && (
+        <Card className="mb-5 p-4">
+          <div className="text-sm font-medium text-zinc-100">Recent changes</div>
+          <div className="mb-3 text-xs text-zinc-500">Changes to Orbit's own files, memories, reminders and workflows. Each can be undone.</div>
+          {undoError && <p className="mb-2 text-xs text-rose-300">{undoError}</p>}
+          <div className="divide-y divide-white/[0.05]">
+            {changes.slice(0, 12).map((c) => (
+              <div key={c.id} className="flex items-center gap-3 py-1.5 text-sm">
+                <span className={`min-w-0 flex-1 truncate ${c.undone_at ? 'text-zinc-500 line-through' : 'text-zinc-200'}`}>{c.summary}</span>
+                <span className="shrink-0 text-xs text-zinc-500">
+                  {c.source === 'you' ? 'you' : 'Orbit'} · {new Date(c.at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+                {c.undone_at ? (
+                  <span className="w-16 shrink-0 text-right text-xs text-zinc-500">undone</span>
+                ) : (
+                  <span className="shrink-0">
+                    <Button variant="ghost" icon={RotateCcw} onClick={() => undo(c.id)}>
+                      Undo
+                    </Button>
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
       {items.length === 0 ? (
         <Empty icon={ScrollText} title="Nothing yet">
           Tool calls show up here as soon as Orbit uses one.

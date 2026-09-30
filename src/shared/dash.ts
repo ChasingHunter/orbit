@@ -96,6 +96,8 @@ export type TemplateInfo = { id: string; title: string; summary: string; install
 
 export type AuditItem = { at: string; tool: string; decision: 'allowed' | 'approved' | 'denied' | 'blocked'; ok?: boolean; input: unknown; output?: string }
 
+export type ChangeItem = { id: number; at: string; source: string; summary: string; undone_at: string | null }
+
 export type UsageInfo = {
   days: { day: string; source: 'chat' | 'task' | 'workflow' | 'trigger'; input: number; output: number; cacheRead: number; cacheWrite: number; calls: number }[]
   top: { label: string; source: string; tokens: number; calls: number }[]
@@ -119,7 +121,7 @@ export type PermissionsInfo = {
 export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'usage' | 'logs' | 'permissions' | 'settings'
 
 export interface DashApi {
-  onChanged(cb: (what: 'integrations' | 'tasks' | 'memory' | 'history' | 'settings' | 'workflows') => void): () => void
+  onChanged(cb: (what: 'integrations' | 'tasks' | 'memory' | 'history' | 'settings' | 'workflows' | 'logs') => void): () => void
   onNavigate(cb: (page: DashPage) => void): () => void
   integrations(): Promise<{ states: IntegrationState[]; presets: PresetInfo[] }>
   connect(presetId: string, secrets: Record<string, string>): Promise<void>
@@ -153,6 +155,9 @@ export interface DashApi {
   tools(): Promise<{ name: string; description: string; sideEffect: boolean }[]>
   audit(limit?: number): Promise<AuditItem[]>
   usage(): Promise<UsageInfo>
+  changes(): Promise<ChangeItem[]>
+  /** Returns what was undone; throws if it can't be. */
+  undo(id: number): Promise<string>
   permissions(): Promise<PermissionsInfo>
   setPermissionLevel(level: PermissionsInfo['level']): Promise<void>
   /** 'level' removes the override so the tool follows the level again. */

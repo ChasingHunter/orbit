@@ -41,6 +41,6 @@ export function openDashboard(page?: DashPage): void {
   win.once('ready-to-show', () => win?.show())
 }
 
-export function notifyDashboard(what: 'integrations' | 'tasks' | 'memory' | 'history' | 'settings' | 'workflows'): void {
+export function notifyDashboard(what: 'integrations' | 'tasks' | 'memory' | 'history' | 'settings' | 'workflows' | 'logs'): void {
   dashboardWindow()?.webContents.send('dash:changed', what)
 }

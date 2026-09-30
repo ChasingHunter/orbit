@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { scheduler } from '../../scheduler'
+import { addScheduleTracked, removeScheduleTracked } from '../../changes'
 import { defineTool } from '../types'
 
 export const setReminder = defineTool({
@@ -14,13 +15,10 @@ export const setReminder = defineTool({
   risk: 'local',
   run: async ({ text, at, repeat }) => {
     if (!at && !repeat) throw new Error('Give either "at" or "repeat"')
-    const s = scheduler.add({
-      kind: 'reminder',
-      title: text.slice(0, 120),
-      payload: { text },
-      at: at ? new Date(at) : undefined,
-      cron: repeat
-    })
+    const s = addScheduleTracked(
+      { kind: 'reminder', title: text.slice(0, 120), payload: { text }, at: at ? new Date(at) : undefined, cron: repeat },
+      `Set reminder "${text.slice(0, 80)}"`
+    )
     const next = scheduler.nextRunOf(s)
     return `Reminder set (id ${s.id.slice(0, 8)}). Next: ${next ? next.toLocaleString() : at}.`
   }
@@ -51,7 +49,7 @@ export const cancelReminder = defineTool({
   run: async ({ id }) => {
     const match = scheduler.list(false, 'reminder').find((s) => s.id.startsWith(id))
     if (!match) return `No reminder with id ${id}.`
-    scheduler.remove(match.id)
+    removeScheduleTracked(match.id, `Cancelled reminder "${match.title}"`)
     return `Cancelled "${match.title}".`
   }
 })

@@ -1,18 +1,19 @@
 import { z } from 'zod'
-import { addMemory, deleteMemory, getMemory, MEMORY_KINDS, searchMemories } from '../../memory'
+import { getMemory, MEMORY_KINDS, searchMemories } from '../../memory'
+import { addMemoryTracked, deleteMemoryTracked } from '../../changes'
 import { defineTool } from '../types'
 
 export const remember = defineTool({
   name: 'remember',
   description:
-    'Save a durable fact about the user for future conversations: who people are, preferences, projects, how they like things done. Only when the user asks you to remember something, or confirms a suggestion. Never passwords, keys or card numbers.',
+    'Save a durable fact about the user for future conversations: who people are, preferences, projects, how they like things done. Use it right away whenever the user asks you to remember, note or save something ("remember that..."). Never passwords, keys or card numbers.',
   input: {
     text: z.string().describe('One self-contained fact, e.g. "Sam is my cofounder; email sam@example.com; prefers WhatsApp"'),
     kind: z.enum(MEMORY_KINDS).optional().describe('Default: note')
   },
   risk: 'local',
   run: async ({ text, kind }) => {
-    const m = addMemory(text, kind)
+    const m = addMemoryTracked(text, kind)
     return `Saved as memory #${m.id}.`
   }
 })
@@ -38,5 +39,5 @@ export const forget = defineTool({
     const m = getMemory(id)
     return m ? `Forget: "${m.text}"` : `Forget memory #${id}`
   },
-  run: async ({ id }) => (deleteMemory(id) ? `Memory #${id} deleted.` : `No memory #${id}.`)
+  run: async ({ id }) => (deleteMemoryTracked(id) ? `Memory #${id} deleted. It can be undone from Logs.` : `No memory #${id}.`)
 })

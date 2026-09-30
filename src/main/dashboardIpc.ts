@@ -8,7 +8,9 @@ import { setSecret } from './secrets'
 import { integrations } from './integrations/manager'
 import { integrationsFile } from './integrations/config'
 import { PRESETS } from './integrations/presets'
-import { addMemory, deleteMemory, listMemories, updateMemory } from './core/memory'
+import { listMemories } from './core/memory'
+import { addMemoryTracked, deleteMemoryTracked, removeWorkflowTracked, saveWorkflowTracked, updateMemoryTracked } from './core/changes'
+import { journalEvents, recentChanges, undoChange } from './core/journal'
 import { deleteConversation, getMessages, listConversations } from './core/history'
 import { tasks } from './core/tasks'
 import { isModelInstalled } from './voice/localStt'
@@ -61,15 +63,15 @@ export function registerDashboardIpc(): void {
 
   ipcMain.handle('dash:memories', () => listMemories())
   ipcMain.handle('dash:memory-add', (_e, text: string, kind: MemoryKind, isPrivate: boolean) => {
-    addMemory(text, kind, isPrivate)
+    addMemoryTracked(text, kind, isPrivate, 'you')
     notifyDashboard('memory')
   })
-  ipcMain.handle('dash:memory-update', (_e, id: number, fields: Parameters<typeof updateMemory>[1]) => {
-    updateMemory(id, fields)
+  ipcMain.handle('dash:memory-update', (_e, id: number, fields: Parameters<typeof updateMemoryTracked>[1]) => {
+    updateMemoryTracked(id, fields, 'you')
     notifyDashboard('memory')
   })
   ipcMain.handle('dash:memory-delete', (_e, id: number) => {
-    deleteMemory(id)
+    deleteMemoryTracked(id, 'you')
     notifyDashboard('memory')
   })
 
@@ -108,14 +110,14 @@ export function registerDashboardIpc(): void {
   ipcMain.handle('dash:workflow-run', (_e, name: string) => void workflows.run(name, 'manual').catch(() => {}))
   ipcMain.handle('dash:workflow-cancel', (_e, runId: string) => workflows.cancel(runId))
   ipcMain.handle('dash:workflow-enabled', (_e, name: string, enabled: boolean) => workflowStore.setEnabled(name, enabled))
-  ipcMain.handle('dash:workflow-delete', (_e, name: string) => workflowStore.remove(name))
+  ipcMain.handle('dash:workflow-delete', (_e, name: string) => removeWorkflowTracked(name, 'you'))
   ipcMain.handle('dash:workflow-edit', (_e, name: string) => shell.openPath(workflowStore.fileOf(name)))
   ipcMain.handle('dash:workflow-get', (_e, name: string) => workflowStore.rawOf(name))
   ipcMain.handle('dash:workflow-save', (_e, previousName: string | null, data: unknown) => {
     const { yaml, workflow } = toValidYaml(data)
     if (!previousName && workflowStore.get(workflow.name)) throw new Error(`A workflow named "${workflow.name}" already exists`)
-    workflowStore.save(yaml)
-    if (previousName && previousName !== workflow.name) workflowStore.remove(previousName)
+    saveWorkflowTracked(yaml, 'you')
+    if (previousName && previousName !== workflow.name) removeWorkflowTracked(previousName, 'you')
     return workflow.name
   })
   ipcMain.handle('dash:tools', () =>
@@ -124,7 +126,7 @@ export function registerDashboardIpc(): void {
   ipcMain.handle('dash:template-add', (_e, id: string) => {
     const t = TEMPLATES.find((x) => x.id === id)
     if (!t) throw new Error(`Unknown template ${id}`)
-    workflowStore.save(t.yaml)
+    saveWorkflowTracked(t.yaml, 'you')
   })
 
   ipcMain.handle('dash:audit', (_e, limit = 500) => {
@@ -173,6 +175,14 @@ export function registerDashboardIpc(): void {
       else d.tools.policy[name] = policy
     })
   )
+
+  journalEvents.on('change', () => {
+    notifyDashboard('logs')
+    notifyDashboard('memory')
+    notifyDashboard('workflows')
+  })
+  ipcMain.handle('dash:changes', () => recentChanges(50))
+  ipcMain.handle('dash:undo', (_e, id: number) => undoChange(id))
 
   ipcMain.handle('dash:tasks', () => tasks.list())
   ipcMain.handle('dash:task-cancel', (_e, id: string) => tasks.cancel(id))

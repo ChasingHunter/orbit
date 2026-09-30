@@ -5,6 +5,7 @@ import { nextRunFor, scheduler } from '../../scheduler'
 import { explain, parseWorkflow, workflowStore } from '../../../workflows/store'
 import { workflows } from '../../../workflows/engine'
 import { defineTool } from '../types'
+import { removeWorkflowTracked, saveWorkflowTracked } from '../../changes'
 import { unknownTools } from '../../../workflows/validate'
 
 const SPEC = `YAML format:
@@ -98,7 +99,7 @@ export const createWorkflow = defineTool({
       const ok = await requestApproval({ tool: 'create_workflow', title: `${exists ? 'Replace' : 'Save'} workflow "${name}"`, input: { yaml } }, signal)
       if (!ok) return 'The user declined. Nothing was saved.'
     }
-    const wf = workflowStore.save(yaml)
+    const wf = saveWorkflowTracked(yaml)
     workflows.sync()
     const s = scheduler.list(true, 'workflow').find((x) => x.id === `wf:${wf.name}`)
     const next = s ? scheduler.nextRunOf(s) : null
@@ -147,7 +148,7 @@ export const deleteWorkflow = defineTool({
   describe: ({ name }) => `Delete workflow "${name}"`,
   run: async ({ name }) => {
     if (!workflowStore.get(name)) return `No workflow named "${name}".`
-    workflowStore.remove(name)
+    removeWorkflowTracked(name)
     workflows.sync()
     return `Deleted "${name}".`
   }

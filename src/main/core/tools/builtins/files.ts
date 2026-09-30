@@ -1,8 +1,9 @@
 import { z } from 'zod'
-import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join, relative, resolve } from 'node:path'
 import { paths } from '../../../paths'
 import { defineTool } from '../types'
+import { saveOwnFile } from '../../changes'
 
 /** Resolves a name inside Orbit's files folder and refuses anything that escapes it. */
 function inFiles(name: string): string {
@@ -23,8 +24,7 @@ export const saveFile = defineTool({
   risk: 'local', // confined to Orbit's own folder
   run: async ({ name, content }) => {
     const file = inFiles(name)
-    mkdirSync(dirname(file), { recursive: true })
-    writeFileSync(file, content)
+    saveOwnFile(file, content)
     return `Saved ${file}`
   }
 })

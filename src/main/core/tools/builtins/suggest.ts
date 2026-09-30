@@ -14,7 +14,7 @@ export function setMemorySuggestionPresenter(fn: (s: { id: string; text: string 
 export const suggestMemory = defineTool({
   name: 'suggest_memory',
   description:
-    "Offer to remember a durable fact the user just mentioned (a person's contact details or role, a preference, a project detail) that isn't already in <memories>. Shows a Save / No chip; nothing is saved unless they accept. At most one per reply. Don't also ask about it in text.",
+    "Offer to remember a durable fact the user just mentioned (a person's contact details or role, a preference, a project detail) that isn't already in <memories>. Shows a Save / No chip; nothing is saved unless they accept. At most one per reply. Don't also ask about it in text. Never use this when the user explicitly asked you to remember something; call remember instead.",
   input: {
     text: z
       .string()
