@@ -19,6 +19,7 @@ import { transcribe, warmUp } from './voice/localStt'
 import { integrations } from './integrations/manager'
 import { tasks } from './core/tasks'
 import { scheduler } from './core/scheduler'
+import { workflows } from './workflows/engine'
 import { registerDashboardIpc } from './dashboardIpc'
 import { openDashboard } from './windows/dashboard'
 import { pasteInto } from './os/writeback'
@@ -91,6 +92,7 @@ async function onScreenshot(): Promise<void> {
 function onPanic(): void {
   conversation.cancel()
   tasks.cancelAll()
+  workflows.cancelAll()
   denyAllApprovals()
   new Notification({ title: 'Orbit', body: 'Stopped all running tasks.' }).show()
 }
@@ -116,6 +118,14 @@ function handleCommand(text: string): boolean {
       setSecret(name, value)
       sendToBar({ type: 'notice', level: 'info', text: `Saved key "${name}" (encrypted).` })
     }
+    return true
+  }
+  if (cmd === '/run-workflow' && args[0]) {
+    sendToBar({ type: 'notice', level: 'info', text: `Running ${args[0]}…` })
+    void workflows.run(args[0], 'manual').then((id) => {
+      const run = workflows.runs(args[0], 5).find((r) => r.id === id)
+      sendToBar({ type: 'notice', level: run?.status === 'done' ? 'info' : 'error', text: run?.status === 'done' ? `${args[0]} finished.` : run?.error ?? 'Run failed' })
+    })
     return true
   }
   if (cmd === '/install-voice') {
@@ -197,9 +207,13 @@ app.whenReady().then(() => {
     dashboard: () => openDashboard(),
     quit: () => app.quit()
   })
+  workflows.init((text, action) => {
+    sendToBar({ type: 'notice', level: 'info', text, action })
+    if (!bar().isVisible()) showBar()
+  })
   if (process.env.ORBIT_E2E) {
     // Test hook for scripts/e2e.ts; never set in normal runs.
-    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler } })
+    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows } })
     return
   }
   startSelectionHook()

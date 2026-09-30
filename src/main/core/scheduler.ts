@@ -94,17 +94,22 @@ class Scheduler extends EventEmitter {
 
   add(input: { kind: ScheduleKind; title: string; payload: unknown; cron?: string; at?: Date; missed?: MissedPolicy; id?: string }): Schedule {
     Scheduler.nextRun(input)
+    const id = input.id ?? randomUUID()
+    const prev = input.id ? this.get(id) : undefined
+    const run_at = input.at ? input.at.toISOString() : null
+    // Same timing as before: keep its history so missed-run detection still works after re-saving.
+    const sameTiming = prev && prev.cron === (input.cron ?? null) && prev.run_at === run_at
     const s: Schedule = {
-      id: input.id ?? randomUUID(),
+      id,
       kind: input.kind,
       title: input.title,
       payload: JSON.stringify(input.payload ?? null),
       cron: input.cron ?? null,
-      run_at: input.at ? input.at.toISOString() : null,
+      run_at,
       enabled: 1,
       missed: input.missed ?? 'ask',
-      last_run_at: null,
-      created_at: now()
+      last_run_at: sameTiming ? prev.last_run_at : null,
+      created_at: sameTiming ? prev.created_at : now()
     }
     this.db()
       .prepare(
