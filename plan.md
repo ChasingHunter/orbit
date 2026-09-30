@@ -4,10 +4,11 @@ This is the working plan I build from. It's written as notes, so expect shorthan
 
 > **Handoff for new Claude session:** Plan is approved in direction; start building. Order: Step 0 Wispr injection spike → Day 1/2/3 roadmap below. Locked decisions: Windows-only MVP · Electron + TypeScript · build from scratch composing MIT libs (no fork) · provider-agnostic core, Claude subscription via Agent SDK as one runner with built-ins disabled · Orbit owns hotkeys (all configurable) and triggers Wispr Flow · local SQLite memory (+ optional Notion mirror) · YAML workflows + local scheduler · approvals for all side-effect tools. User prefs: low maintenance, configurable everything, honest limits, terse communication. Before coding Agent SDK parts, load the `claude-api` skill and verify API signatures.
 
-## Status (v0.7, Sept 2026)
+## Status (v0.8, Sept 2026)
 Done: Day 1, 2, 3 and most of Phase 2. Bar + context capture, voice (Parakeet local + Wispr), runners (Claude subscription, API key, Ollama, offline fallback), MCP integrations (Notion, Slack, Gmail/Calendar), memory, background agents, workflows (triggers, if/foreach/parallel/code in QuickJS, visual editor), spoken replies (Pocket TTS / Windows voice), NSIS + auto-update.
 Added since the plan: autonomy levels (strict / careful / trusted / full) over risk classes (read / local / external / destructive) + per-tool overrides + "allow for this chat"; undo journal for everything in Orbit's own space; token usage page + daily background budget; Setup page (dependency checks, Claude sign-in, bundled vs installed Claude Code).
-Not yet: headless server mode, phone bridge, macOS, code signing. Next steps: see "Next" below.
+v0.8 done (items 1 to 5 below): attachments, chat polish (retry, edit, model picker, KaTeX), writable folders with snapshots, make_file (docx/pdf/xlsx/pptx), run_python (Pyodide in a sandboxed Chromium page) and opt-in run_command with model-written descriptions.
+Not yet: headless server mode, phone bridge, macOS, code signing. Next: v0.9, items 6 to 11 below.
 
 ## Next: closing the gap with Claude (v0.8 to v1.0)
 
