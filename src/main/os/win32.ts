@@ -1,6 +1,6 @@
 import koffi from 'koffi'
 
-// Thin user32/kernel32 bindings via koffi (FFI, prebuilt — no compiler needed).
+// Thin user32/kernel32 bindings via koffi (FFI with prebuilt binaries, so no compiler needed).
 
 const user32 = koffi.load('user32.dll')
 const kernel32 = koffi.load('kernel32.dll')

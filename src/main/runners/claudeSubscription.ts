@@ -25,7 +25,7 @@ function claudeExecutable(): string | undefined {
  * Uses the user's own logged-in Claude Code (via the Agent SDK) purely as model access.
  * All Claude Code built-ins, settings files, skills, plugins and claude.ai connectors are off;
  * the model can only call Orbit tools through one in-process MCP server.
- * Orbit never reads or stores OAuth tokens — the user runs `claude /login` themselves.
+ * Orbit never reads or stores OAuth tokens; the user runs `claude /login` themselves.
  */
 export class ClaudeSubscriptionRunner implements AgentRunner {
   readonly id = 'claude-subscription'

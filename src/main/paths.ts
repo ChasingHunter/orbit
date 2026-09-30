@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-// %APPDATA%\Orbit — all user data lives here (plain files, easy to back up).
+// %APPDATA%\Orbit: all user data lives here (plain files, easy to back up).
 // ORBIT_DATA_DIR lets tests run against an isolated profile.
 export const dataDir = process.env.ORBIT_DATA_DIR ?? join(app.getPath('appData'), 'Orbit')
 export const paths = {
