@@ -4,7 +4,7 @@ Orbit is a small assistant that sits in your Windows tray. Press a hotkey, say o
 
 I wanted something like the Gemini or Copilot sidebar, but for every app on my PC, open source, and not tied to one AI company. You can point it at your Claude subscription, an API key, or a model running locally in Ollama, and everything else works the same.
 
-It's early (version 0.2). It can now remember things about you, work in the background, and use Notion, Slack, Gmail and Google Calendar. Scheduled workflows are next. The full roadmap is in [plan.md](plan.md).
+It's early (version 0.3). It can remember things about you, work in the background, use Notion, Slack, Gmail and Google Calendar, set reminders, and run workflows on a schedule. Event triggers, branching and a visual workflow editor are next. The full roadmap is in [plan.md](plan.md).
 
 ## Install
 
@@ -45,6 +45,16 @@ Mark a memory private and it's only ever sent to models running on your own mach
 ## Background jobs
 
 Say "research the best Postgres hosting for a startup in India, in the background" and Orbit hands it to a separate agent so you can keep going. When it's done you get a notification, and the result is saved as a markdown file (the dashboard has it too). For jobs that split up neatly, it can run up to four agents at the same time and put their answers together.
+
+## Reminders and workflows
+
+"Remind me in 30 minutes to stretch" or "remind me every weekday at 9 to check the deploy" sets a desktop notification. It works offline.
+
+Workflows are jobs Orbit runs on a schedule or when you ask. Describe one in the bar ("every Friday at 5, summarise my week and save it as a note") and Orbit writes it, shows it to you, and saves it once you approve. A workflow can call tools, ask a model to write or decide something, and stop to let you review before anything gets sent. Each run and step is logged on the dashboard's Workflows page.
+
+There's a ready-made one to start with: a daily tech digest that reads Hacker News, Google News, TechCrunch and Product Hunt every morning and writes you a short roundup of big tech, AI, startups and new products worth trying. Add it from the Workflows page.
+
+Workflows only run while Orbit is running. If your PC was off at the scheduled time, Orbit asks, runs it, or skips it the next time it starts, depending on how the workflow is set up. They're plain YAML files in `%APPDATA%\Orbit\workflows` if you want to edit them by hand.
 
 ## Connecting your apps
 
