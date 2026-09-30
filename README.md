@@ -45,7 +45,7 @@ If you had text selected when you opened the bar, it shows up as a small chip ab
 
 When you have text selected, a row of quick actions shows up: Explain, Summarise, Fix grammar, Translate and Reply. Fix grammar puts the corrected text straight back where your selection was; Reply copies a draft to your clipboard. You can change the list in `settings.json`.
 
-For any other answer that rewrites your selection, click "Paste back". Your clipboard is put back the way it was afterwards.
+For any other answer that rewrites your selection, click "Paste back". Your clipboard is put back the way it was afterwards (if another app left something on it Orbit can't read, that part is skipped rather than blocking the paste). If the paste itself fails, the text stays on your clipboard and a notification tells you to press Ctrl+V.
 
 You can also attach files: drag them onto the bar, paste them, or click the paperclip. PDFs, Word, Excel, PowerPoint, images and any text or code file work. Orbit keeps a copy for 30 days so follow-up questions can still read it, and only the first 20,000 characters go along with your question (the model reads on if it needs more). Images are shrunk to the size Claude uses anyway, so a big photo doesn't cost more tokens than it has to.
 

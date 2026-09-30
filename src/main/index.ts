@@ -40,7 +40,7 @@ import { registerPythonScheme } from './python/sandbox'
 import { modelChoices } from './runners/choices'
 import { claudeStatus, runChecks } from './system/health'
 import { openDashboard } from './windows/dashboard'
-import { pasteInto } from './os/writeback'
+import { pasteInto, snapshotClipboard } from './os/writeback'
 import { acceleratorKey, foregroundWindow, isKeyDown, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
 import { applyStartWithWindows, startAutoUpdates } from './os/system'
 
@@ -275,7 +275,16 @@ function registerIpc(): void {
     hideBar()
   })
   ipcMain.on('bar:copy', (_e, text: string) => void clipboard.writeText(text))
-  ipcMain.handle('bar:replace', (_e, text: string) => pasteInto(prevWindow, text, hideBar))
+  ipcMain.handle('bar:replace', async (_e, text: string) => {
+    try {
+      await pasteInto(prevWindow, text, hideBar)
+    } catch (err) {
+      // Never drop the text: leave it on the clipboard and say so.
+      logInfo('paste: failed', err)
+      await clipboard.writeText(text).catch(() => {})
+      new Notification({ title: "Couldn't paste it in", body: 'The text is on your clipboard. Press Ctrl+V where you want it.' }).show()
+    }
+  })
   ipcMain.on('bar:screenshot', () => void onScreenshot())
   ipcMain.handle('bar:attach', (_e, files: string[]) => attachPaths(files))
   ipcMain.handle('bar:attach-data', (_e, name: string, data: Uint8Array) => attachData(name, data))
@@ -370,7 +379,7 @@ app.whenReady().then(() => {
     // Test hook for scripts/e2e.ts; never set in normal runs.
     Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, runChecks, speaker, recentChanges, undoChange, runCleanup, storageReport,
       measureTools: () => runnableTools(() => []).map((t) => ({ name: t.name, chars: t.description.length + JSON.stringify(z.toJSONSchema(z.object(t.input))).length })),
-      made,
+      made, snapshotClipboard,
       callTool: (name: string, input: unknown, source?: 'chat' | 'workflow') => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [], source }) } })
     return
   }
