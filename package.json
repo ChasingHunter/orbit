@@ -35,6 +35,7 @@
     "marked": "18.0.14",
     "marked-katex-extension": "5.1.13",
     "pptxgenjs": "4.0.1",
+    "pyodide": "314.0.7",
     "quickjs-emscripten-core": "0.32.0",
     "selection-hook": "2.1.1",
     "sherpa-onnx-node": "1.13.8",

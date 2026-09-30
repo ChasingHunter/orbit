@@ -57,14 +57,14 @@ const cell = z.union([z.string(), z.number(), z.boolean(), z.null()])
 export const makeFile = defineTool({
   name: 'make_file',
   description:
-    "Make a Word, PDF, Excel or PowerPoint file in Orbit's files folder. docx/pdf: write markdown (headings, lists, tables, links). xlsx: sheets of rows, first row is the header, a string starting with = is a formula (e.g. =SUM(B2:B9)). pptx: slides with a title and bullets. Use copy_file afterwards to put it in one of the user's folders.",
+    "Make a docx, pdf, xlsx or pptx in Orbit's files folder. docx/pdf: markdown. xlsx: sheets of rows, row 1 is the header, strings like =SUM(B2:B9) are formulas. pptx: slides. copy_file can then put it in the user's folder.",
   input: {
-    name: z.string().describe('File name without folder, e.g. q3-report'),
+    name: z.string().describe('e.g. q3-report'),
     format: z.enum(['docx', 'pdf', 'xlsx', 'pptx']),
     title: z.string().optional(),
-    markdown: z.string().optional().describe('For docx and pdf'),
-    sheets: z.array(z.object({ name: z.string(), rows: z.array(z.array(cell)) })).optional().describe('For xlsx'),
-    slides: z.array(z.object({ title: z.string(), bullets: z.array(z.string()).optional(), notes: z.string().optional() })).optional().describe('For pptx')
+    markdown: z.string().optional(),
+    sheets: z.array(z.object({ name: z.string(), rows: z.array(z.array(cell)) })).optional(),
+    slides: z.array(z.object({ title: z.string(), bullets: z.array(z.string()).optional(), notes: z.string().optional() })).optional()
   },
   risk: 'local', // a new file in Orbit's own folder; never overwrites
   run: async ({ name, format, title, markdown, sheets, slides }) => {

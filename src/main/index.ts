@@ -35,6 +35,7 @@ import { browserUrl, startBrowserUrlHelper, stopBrowserUrlHelper } from './os/br
 import { registerDashboardIpc, setVoiceInstaller } from './dashboardIpc'
 import { attachData, attachPaths, pruneAttachments } from './core/attachments'
 import { pruneSnapshots } from './core/userFiles'
+import { registerPythonScheme } from './python/sandbox'
 import { modelChoices } from './runners/choices'
 import { claudeStatus, runChecks } from './system/health'
 import { openDashboard } from './windows/dashboard'
@@ -44,6 +45,7 @@ import { applyStartWithWindows, startAutoUpdates } from './os/system'
 
 ensureDataDirs()
 installLogging((message) => sendToBar({ type: 'notice', level: 'error', text: `Internal error: ${message}` }))
+registerPythonScheme()
 
 // Keep Chromium caches out of the user-facing data folder.
 app.setPath('userData', join(dataDir, 'chromium'))

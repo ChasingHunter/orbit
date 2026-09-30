@@ -63,6 +63,26 @@ export function PermissionsPage(): React.JSX.Element {
         <p className="mb-6 text-xs text-zinc-500">Workflow steps you approved when saving a workflow also ask again each run at this level.</p>
       )}
 
+      <Card className="mb-6 p-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={p.commandsEnabled}
+            onChange={(e) => void dash.setCommandsEnabled(e.target.checked)}
+            className="mt-1 accent-sky-500"
+            aria-label="Let Orbit run commands"
+          />
+          <span>
+            <span className="block text-sm font-medium text-zinc-100">Let Orbit run commands</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-zinc-500">
+              Real PowerShell commands, with your full permissions, for things nothing else can do (system info, installs, git). Orbit can't undo what a command changes. Each one
+              comes with a plain description of what it does, and asks first unless your level is Full. Python is different: it always runs in a sandbox with no internet and no
+              access to your files, so it's on.
+            </span>
+          </span>
+        </label>
+      </Card>
+
       {RISKS.map((r) => {
         const tools = p.tools.filter((t) => t.risk === r.id)
         if (!tools.length) return null

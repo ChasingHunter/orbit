@@ -86,6 +86,7 @@ const dash: DashApi = {
   undo: (id, force) => ipcRenderer.invoke('dash:undo', id, force),
   permissions: () => ipcRenderer.invoke('dash:permissions'),
   setPermissionLevel: (level) => ipcRenderer.invoke('dash:permission-level', level),
+  setCommandsEnabled: (on) => ipcRenderer.invoke('dash:commands-enabled', on),
   setToolPolicy: (name, policy) => ipcRenderer.invoke('dash:tool-policy', name, policy),
   setBudget: (n) => ipcRenderer.invoke('dash:set-budget', n),
   settings: () => ipcRenderer.invoke('dash:settings'),

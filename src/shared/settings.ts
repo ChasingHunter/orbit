@@ -100,6 +100,20 @@ export const Settings = z.object({
         .object({
           provider: z.enum(['brave', 'tavily']).default('brave')
         })
+        .prefault({}),
+      /** Sandboxed Python: limits per run. */
+      python: z
+        .object({
+          timeoutSec: z.number().int().min(5).max(900).default(60),
+          memoryMb: z.number().int().min(256).max(4096).default(1024)
+        })
+        .prefault({}),
+      /** Real PowerShell commands. Off until you turn it on in Permissions. */
+      commands: z
+        .object({
+          enabled: z.boolean().default(false),
+          timeoutSec: z.number().int().min(5).max(3600).default(120)
+        })
         .prefault({})
     })
     .prefault({}),

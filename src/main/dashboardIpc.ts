@@ -169,6 +169,7 @@ export function registerDashboardIpc(): void {
     'dash:permissions',
     (): PermissionsInfo => ({
       level: settings.current.permissions.level,
+      commandsEnabled: settings.current.tools.commands.enabled,
       tools: allTools().map((t) => {
         const { policy, from } = policyOf(t.name, t.risk)
         return { name: t.name, description: t.description.replace(/^\[[^\]]+\]\s*/, '').slice(0, 140), risk: t.risk, policy, from, levelPolicy: levelDefault(t.risk) }
@@ -178,6 +179,11 @@ export function registerDashboardIpc(): void {
   ipcMain.handle('dash:permission-level', (_e, level: PermissionsInfo['level']) =>
     settings.update((d) => {
       d.permissions.level = level
+    })
+  )
+  ipcMain.handle('dash:commands-enabled', (_e, on: boolean) =>
+    settings.update((d) => {
+      d.tools.commands.enabled = on
     })
   )
   ipcMain.handle('dash:tool-policy', (_e, name: string, policy: 'level' | 'ask' | 'always' | 'never') =>

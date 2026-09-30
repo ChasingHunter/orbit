@@ -640,6 +640,8 @@ function Chip({ item, onRemove }: { item: ContextItem; onRemove: () => void }): 
   )
 }
 
+const MAKES_FILES = new Set(['make_file', 'run_python'])
+
 function MadeFile({ path }: { path: string }): React.JSX.Element {
   const name = path.split(/[\/]/).pop() ?? path
   return (
@@ -743,11 +745,11 @@ function EntryView({ entry, onRetry, onEdit }: { entry: Entry; onRetry?: () => v
           })}
         </div>
       )}
-      {a.tools.some((t) => t.name === 'make_file' && t.output && !t.isError) && (
+      {a.tools.some((t) => MAKES_FILES.has(t.name) && t.output && !t.isError) && (
         <div className="flex flex-wrap gap-1.5">
           {a.tools
-            .filter((t) => t.name === 'make_file' && !t.isError)
-            .flatMap((t) => [t.output?.match(/^Saved (.+)$/m)?.[1]].filter((p): p is string => !!p))
+            .filter((t) => MAKES_FILES.has(t.name) && !t.isError)
+            .flatMap((t) => [...(t.output ?? '').matchAll(/^Saved (.+)$/gm)].map((m) => m[1]))
             .map((p) => (
               <MadeFile key={p} path={p} />
             ))}

@@ -93,6 +93,12 @@ Orbit won't create or rename files to types that run when you open them (.exe, .
 
 Orbit can also make Word, Excel, PowerPoint and PDF files ("turn this into a one-page PDF", "put these numbers in a spreadsheet with totals"). They go in its own files folder, never overwrite anything (a second report.docx becomes report (2).docx), and the answer shows the file with Open and Show in folder buttons. Spreadsheet formulas stay real formulas. Ask it to copy one into a writable folder if you want it somewhere else.
 
+## Running code
+
+Orbit can run Python for anything that needs real calculation: "total these invoices by month", "chart this CSV", "convert this to JSON". It runs in a sandbox (Pyodide, inside a locked-down Chromium page) with no internet and no access to your files, so it doesn't ask first. Files you attach or point it at are copied in, and whatever it saves (a chart, a cleaned-up CSV) lands in Orbit's files folder. numpy, pandas, matplotlib and the like download once the first time they're needed. Each run starts fresh and stops after 60 seconds or 1 GB of memory.
+
+Real PowerShell commands are a different thing: they run with your full permissions and nothing can undo them. They're off until you tick "Let Orbit run commands" on the Permissions page. After that, every command comes with a short plain description the model writes ("Check IP address" above `ipconfig`), and the approval card shows both. The description goes in the log too.
+
 ## Reminders and workflows
 
 "Remind me in 30 minutes to stretch" or "remind me every weekday at 9 to check the deploy" sets a desktop notification. It works offline.

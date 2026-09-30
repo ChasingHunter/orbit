@@ -126,6 +126,8 @@ export type UsageInfo = {
 
 export type PermissionsInfo = {
   level: 'strict' | 'careful' | 'trusted' | 'full'
+  /** run_command is available at all. */
+  commandsEnabled: boolean
   tools: {
     name: string
     description: string
@@ -182,6 +184,7 @@ export interface DashApi {
   undo(id: number, force?: boolean): Promise<{ done: string } | { conflict: string }>
   permissions(): Promise<PermissionsInfo>
   setPermissionLevel(level: PermissionsInfo['level']): Promise<void>
+  setCommandsEnabled(on: boolean): Promise<void>
   /** 'level' removes the override so the tool follows the level again. */
   setToolPolicy(name: string, policy: 'level' | 'ask' | 'always' | 'never'): Promise<void>
   setBudget(tokensPerDay: number): Promise<void>
