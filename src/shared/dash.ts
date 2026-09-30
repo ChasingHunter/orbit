@@ -45,6 +45,10 @@ export type DashSettings = {
   hotkeys: { bar: string; screenshot: string; panic: string }
   /** As written in settings (may use %DOWNLOADS% etc.). */
   allowedFolders: string[]
+  voiceMode: 'toggle' | 'hold'
+  startWithWindows: boolean
+  autoUpdate: boolean
+  version: string
 }
 
 export type WorkflowRunItem = {
@@ -127,7 +131,9 @@ export interface DashApi {
   tools(): Promise<{ name: string; description: string; sideEffect: boolean }[]>
   audit(limit?: number): Promise<AuditItem[]>
   settings(): Promise<DashSettings>
-  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[] }): Promise<void>
+  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[]; voiceMode?: DashSettings['voiceMode']; startWithWindows?: boolean; autoUpdate?: boolean }): Promise<void>
+  /** Throws if another app already owns the combination. */
+  setHotkey(action: 'bar' | 'screenshot' | 'panic', accelerator: string): Promise<void>
   pickFolder(): Promise<string | null>
   openPath(what: 'settings' | 'data' | 'files' | 'integrations'): Promise<void>
 }

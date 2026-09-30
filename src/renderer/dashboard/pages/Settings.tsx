@@ -24,7 +24,7 @@ export function SettingsPage(): React.JSX.Element {
     <>
       <PageHeader
         title="Settings"
-        subtitle="The common ones. Everything else, including hotkeys and tool permissions, is in settings.json and applies as soon as you save."
+        subtitle="The common ones. Everything else, like tool permissions and quick actions, is in settings.json and applies as soon as you save."
         actions={
           <>
             <Button icon={FileCog} onClick={() => void dash.openPath('settings')}>
@@ -55,6 +55,15 @@ export function SettingsPage(): React.JSX.Element {
             <option value="local">On this PC (Parakeet, free, offline)</option>
             <option value="wispr">Wispr Flow</option>
             <option value="off">Off</option>
+          </select>
+          <select
+            value={s.voiceMode}
+            onChange={(e) => void dash.updateSettings({ voiceMode: e.target.value as DashSettings['voiceMode'] })}
+            className={selectClass}
+            aria-label="How the hotkey records"
+          >
+            <option value="toggle">Press to start, press again to send</option>
+            <option value="hold">Hold while talking, let go to send</option>
           </select>
           {s.voiceEngine === 'local' && !s.voiceModelInstalled && (
             <span className="flex items-center gap-2 text-sm text-amber-300">
@@ -89,11 +98,18 @@ export function SettingsPage(): React.JSX.Element {
         </div>
       </Section>
 
-      <Section title="Hotkeys" hint="Change these in settings.json.">
+      <Section title="Hotkeys" hint="Click Change, then press the new combination. It needs Ctrl, Alt or Win so it doesn't clash with normal typing.">
         <div className="grid gap-2 text-sm">
-          <Row label="Open the bar and talk" value={s.hotkeys.bar} />
-          <Row label="Snip and ask" value={s.hotkeys.screenshot} />
-          <Row label="Stop everything" value={s.hotkeys.panic} />
+          <HotkeyRow action="bar" label="Open the bar and talk" value={s.hotkeys.bar} />
+          <HotkeyRow action="screenshot" label="Snip and ask" value={s.hotkeys.screenshot} />
+          <HotkeyRow action="panic" label="Stop everything" value={s.hotkeys.panic} />
+        </div>
+      </Section>
+
+      <Section title="Orbit" hint={`Version ${s.version}`}>
+        <div className="grid gap-2 text-sm">
+          <Toggle label="Start when Windows starts" checked={s.startWithWindows} onChange={(v) => void dash.updateSettings({ startWithWindows: v })} />
+          <Toggle label="Update automatically (installs when you quit Orbit)" checked={s.autoUpdate} onChange={(v) => void dash.updateSettings({ autoUpdate: v })} />
         </div>
       </Section>
     </>
@@ -110,11 +126,73 @@ function Section(props: { title: string; hint: string; children: React.ReactNode
   )
 }
 
-function Row({ label, value }: { label: string; value: string }): React.JSX.Element {
+function Toggle(props: { label: string; checked: boolean; onChange: (v: boolean) => void }): React.JSX.Element {
+  // Flip right away; the saved value arrives a moment later.
+  const [on, setOn] = useState(props.checked)
+  useEffect(() => setOn(props.checked), [props.checked])
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-zinc-400">{label}</span>
-      <kbd className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 font-sans text-xs text-zinc-300">{value.replace('Control', 'Ctrl').replace('Escape', 'Esc').replace(/\+/g, ' + ')}</kbd>
+    <label className="flex cursor-pointer items-center justify-between">
+      <span className="text-zinc-300">{props.label}</span>
+      <input
+        type="checkbox"
+        checked={on}
+        onChange={(e) => {
+          setOn(e.target.checked)
+          props.onChange(e.target.checked)
+        }}
+        className="h-4 w-4 accent-sky-500"
+      />
+    </label>
+  )
+}
+
+/** Turns a keydown into an Electron accelerator, or undefined while only modifiers are held. */
+function toAccelerator(e: React.KeyboardEvent): string | undefined {
+  const mods = [e.ctrlKey && 'Control', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Super'].filter(Boolean) as string[]
+  const k = e.key
+  if (['Control', 'Alt', 'Shift', 'Meta', 'OS'].includes(k)) return undefined
+  const key = k === ' ' ? 'Space' : k === 'Escape' ? 'Escape' : /^F\d{1,2}$/.test(k) ? k : k.length === 1 ? k.toUpperCase() : k
+  return [...mods, key].join('+')
+}
+
+function HotkeyRow(props: { action: 'bar' | 'screenshot' | 'panic'; label: string; value: string }): React.JSX.Element {
+  const [recording, setRecording] = useState(false)
+  const [error, setError] = useState('')
+  const pretty = (v: string): string => v.replace('Control', 'Ctrl').replace('Escape', 'Esc').replace('Super', 'Win').replace(/\+/g, ' + ')
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-zinc-400">{props.label}</span>
+        <div className="flex items-center gap-2">
+          {recording ? (
+            <input
+              autoFocus
+              readOnly
+              placeholder="Press keys…"
+              onBlur={() => setRecording(false)}
+              onKeyDown={(e) => {
+                e.preventDefault()
+                if (e.key === 'Escape' && !e.ctrlKey && !e.altKey) return setRecording(false)
+                const accel = toAccelerator(e)
+                if (!accel) return
+                if (!e.ctrlKey && !e.altKey && !e.metaKey) return setError('Include Ctrl, Alt or Win.')
+                setRecording(false)
+                dash
+                  .setHotkey(props.action, accel)
+                  .then(() => setError(''))
+                  .catch((err: Error) => setError(err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')))
+              }}
+              className="w-40 rounded-md border border-sky-400/60 bg-black/30 px-2 py-0.5 text-center text-xs text-zinc-100 outline-none"
+            />
+          ) : (
+            <kbd className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 font-sans text-xs text-zinc-300">{pretty(props.value)}</kbd>
+          )}
+          <Button variant="ghost" onClick={() => (setError(''), setRecording(true))}>
+            Change
+          </Button>
+        </div>
+      </div>
+      {error && <p className="mt-1 text-right text-xs text-amber-300">{error}</p>}
     </div>
   )
 }

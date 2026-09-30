@@ -72,6 +72,16 @@ export function tapCombo(vks: number[]): void {
   sendKeys(vks, true)
 }
 
+/** Virtual-key code for the main (non-modifier) key of an Electron accelerator like "Control+Alt+Space". */
+export function acceleratorKey(accel: string): number | undefined {
+  const key = accel.split('+').pop()!.trim().toUpperCase()
+  if (/^[A-Z0-9]$/.test(key)) return key.charCodeAt(0)
+  const fn = key.match(/^F(\d{1,2})$/)
+  if (fn) return 0x6f + Number(fn[1])
+  const named: Record<string, number> = { SPACE: 0x20, ENTER: 0x0d, RETURN: 0x0d, ESCAPE: 0x1b, ESC: 0x1b, TAB: 0x09, BACKSPACE: 0x08, '`': 0xc0, '/': 0xbf, '.': 0xbe, ',': 0xbc, ';': 0xba, "'": 0xde, '[': 0xdb, ']': 0xdd, '\\': 0xdc, '-': 0xbd, '=': 0xbb }
+  return named[key]
+}
+
 export const VK = { SHIFT: 0x10, CONTROL: 0x11, MENU: 0x12, LWIN: 0x5b, RWIN: 0x5c, V: 0x56, LCONTROL: 0xa2 }
 
 export function isKeyDown(vk: number): boolean {

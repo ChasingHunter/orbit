@@ -71,6 +71,7 @@ const dash: DashApi = {
   settings: () => ipcRenderer.invoke('dash:settings'),
   updateSettings: (patch) => ipcRenderer.invoke('dash:settings-update', patch),
   pickFolder: () => ipcRenderer.invoke('dash:pick-folder'),
+  setHotkey: (action, accel) => ipcRenderer.invoke('dash:set-hotkey', action, accel),
   openPath: (what) => ipcRenderer.invoke('dash:open', what)
 }
 

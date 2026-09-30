@@ -30,7 +30,8 @@ import { browserUrl, startBrowserUrlHelper, stopBrowserUrlHelper } from './os/br
 import { registerDashboardIpc } from './dashboardIpc'
 import { openDashboard } from './windows/dashboard'
 import { pasteInto } from './os/writeback'
-import { foregroundWindow, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
+import { acceleratorKey, foregroundWindow, isKeyDown, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
+import { applyStartWithWindows, startAutoUpdates } from './os/system'
 
 ensureDataDirs()
 installLogging((message) => sendToBar({ type: 'notice', level: 'error', text: `Internal error: ${message}` }))
@@ -70,19 +71,36 @@ async function captureContext(): Promise<ContextItem[]> {
   return items
 }
 
+/**
+ * Hold-to-talk: after the hotkey starts dictation, wait until its main key is released and stop.
+ * A quick tap (under 350 ms) leaves dictation running, so tapping still works like toggle mode.
+ */
+async function stopWhenReleased(): Promise<void> {
+  const vk = acceleratorKey(settings.current.hotkeys.bar)
+  if (!vk) return
+  const pressedAt = Date.now()
+  while (isKeyDown(vk)) await new Promise((r) => setTimeout(r, 30))
+  if (Date.now() - pressedAt >= 350 && voice.listening) await voice.stop()
+}
+
 /** Bar hotkey: open (+ start dictation) → press again to stop dictation → again to restart. */
 async function onBarHotkey(): Promise<void> {
+  const hold = settings.current.voice.mode === 'hold' && !process.env.ORBIT_E2E
   const w = bar()
   if (!w.isVisible()) {
     const context = await captureContext()
     sendToBar({ type: 'open', context, autoSubmitMs: autoSubmitMs(), quickActions: settings.current.quickActions })
     showBar()
     attachBrowserUrl()
-    if (settings.current.voice.startOnBarOpen) await voice.start()
+    if (settings.current.voice.startOnBarOpen) {
+      await voice.start()
+      if (hold) await stopWhenReleased()
+    }
     return
   }
   w.focus()
   await voice.toggle()
+  if (hold && voice.listening) await stopWhenReleased()
 }
 
 /** Adds the active tab's URL as a chip once it's known, without holding up the bar. */
@@ -120,7 +138,7 @@ function onPanic(): void {
   new Notification({ title: 'Orbit', body: 'Stopped all running tasks.' }).show()
 }
 
-function rebindHotkeys(): void {
+function rebindHotkeys(): string[] {
   const failed = bindHotkeys(settings.current.hotkeys, {
     bar: () => void onBarHotkey(),
     screenshot: () => void onScreenshot(),
@@ -129,6 +147,7 @@ function rebindHotkeys(): void {
   if (failed.length) {
     new Notification({ title: 'Orbit: hotkey conflict', body: `Could not register: ${failed.join(', ')}` }).show()
   }
+  return failed
 }
 
 /** Slash commands handled locally, never sent to a model. */
@@ -178,6 +197,20 @@ function registerIpc(): void {
   ipcMain.on('bar:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
   ipcMain.on('bar:answer', (_e, id: string, text: string) => answerQuestion(id, text))
   ipcMain.handle('bar:save-memory', (_e, text: string) => void addMemory(text))
+  ipcMain.handle('dash:set-hotkey', (_e, action: 'bar' | 'screenshot' | 'panic', accel: string) => {
+    const before = settings.current.hotkeys[action]
+    settings.update((d) => {
+      d.hotkeys[action] = accel
+    })
+    const failed = process.env.ORBIT_E2E ? [] : rebindHotkeys()
+    if (failed.some((f) => f.startsWith(action))) {
+      settings.update((d) => {
+        d.hotkeys[action] = before
+      })
+      if (!process.env.ORBIT_E2E) rebindHotkeys()
+      throw new Error(`${accel.replace(/\+/g, ' + ')} is already used by another app. Pick a different combination.`)
+    }
+  })
   ipcMain.on('dash:continue', (_e, conversationId: string) => {
     const conv = getConversation(conversationId)
     if (!conv) return
@@ -213,7 +246,10 @@ app.whenReady().then(() => {
   ensureDataDirs()
   settings.load()
   settings.watch()
-  settings.on('change', rebindHotkeys)
+  settings.on('change', () => {
+    if (!process.env.ORBIT_E2E) rebindHotkeys()
+    applyStartWithWindows()
+  })
 
   registerIpc()
   registerDashboardIpc()
@@ -265,6 +301,8 @@ app.whenReady().then(() => {
   startSelectionHook()
   startBrowserUrlHelper()
   rebindHotkeys()
+  applyStartWithWindows()
+  startAutoUpdates()
   scheduler.start()
   warmUp()
 })

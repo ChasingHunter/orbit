@@ -1,4 +1,5 @@
 import { dialog, ipcMain, shell } from 'electron'
+import { version } from '../../package.json'
 import { existsSync, readFileSync } from 'node:fs'
 import type { DashSettings, MemoryKind } from '@shared/dash'
 import { dataDir, paths } from './paths'
@@ -22,7 +23,14 @@ import type { WorkflowInfo } from '@shared/dash'
 import { toValidYaml } from './workflows/validate'
 import { allTools } from './core/tools/registry'
 
-type SettingsPatch = { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[] }
+type SettingsPatch = {
+  models?: Partial<DashSettings['models']>
+  voiceEngine?: DashSettings['voiceEngine']
+  allowedFolders?: string[]
+  voiceMode?: DashSettings['voiceMode']
+  startWithWindows?: boolean
+  autoUpdate?: boolean
+}
 
 export function registerDashboardIpc(): void {
   integrations.on('change', () => notifyDashboard('integrations'))
@@ -141,7 +149,12 @@ export function registerDashboardIpc(): void {
       voiceEngine: settings.current.voice.engine,
       voiceModelInstalled: isModelInstalled(),
       hotkeys: settings.current.hotkeys,
-      allowedFolders: settings.current.files.allowedFolders
+      allowedFolders: settings.current.files.allowedFolders,
+      voiceMode: settings.current.voice.mode,
+      startWithWindows: settings.current.ui.startWithWindows,
+      autoUpdate: settings.current.ui.autoUpdate,
+      // From package.json so dev runs don't report Electron's own version.
+      version
     })
   )
   ipcMain.handle('dash:settings-update', (_e, patch: SettingsPatch) => {
@@ -149,6 +162,9 @@ export function registerDashboardIpc(): void {
       if (patch.models) Object.assign(d.models, patch.models)
       if (patch.voiceEngine) d.voice.engine = patch.voiceEngine
       if (patch.allowedFolders) d.files.allowedFolders = patch.allowedFolders
+      if (patch.voiceMode) d.voice.mode = patch.voiceMode
+      if (patch.startWithWindows !== undefined) d.ui.startWithWindows = patch.startWithWindows
+      if (patch.autoUpdate !== undefined) d.ui.autoUpdate = patch.autoUpdate
     })
   })
   ipcMain.handle('dash:pick-folder', async () => {

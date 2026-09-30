@@ -45,7 +45,9 @@ export const Settings = z.object({
       // Start dictation automatically when the bar opens via hotkey.
       startOnBarOpen: z.boolean().default(true),
       autoSubmit: z.boolean().default(true),
-      autoSubmitDelayMs: z.number().int().min(0).default(700)
+      autoSubmitDelayMs: z.number().int().min(0).default(700),
+      /** toggle: press to start, press again to send. hold: hold while talking, let go to send (a quick tap still toggles). */
+      mode: z.enum(['toggle', 'hold']).default('toggle')
     })
     .prefault({}),
 
@@ -98,7 +100,9 @@ export const Settings = z.object({
   ui: z
     .object({
       barPosition: z.enum(['cursor', 'center']).default('center'),
-      hideOnBlur: z.boolean().default(true)
+      hideOnBlur: z.boolean().default(true),
+      startWithWindows: z.boolean().default(true),
+      autoUpdate: z.boolean().default(true)
     })
     .prefault({}),
 

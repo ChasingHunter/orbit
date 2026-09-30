@@ -1,6 +1,6 @@
 {
   "name": "orbit",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Open-source, provider-agnostic desktop assistant for Windows",
   "main": "./out/main/index.js",
   "license": "MIT",
@@ -23,6 +23,7 @@
     "@mozilla/readability": "0.6.0",
     "ai": "7.0.123",
     "croner": "10.0.1",
+    "electron-updater": "6.8.9",
     "koffi": "3.3.2",
     "linkedom": "0.18.13",
     "lucide-react": "1.49.0",
@@ -91,7 +92,15 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": false
-    }
+      "createDesktopShortcut": false,
+      "artifactName": "Orbit-Setup-${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ChasingHunter",
+        "repo": "orbit"
+      }
+    ]
   }
 }

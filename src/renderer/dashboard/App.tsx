@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { DashSettings } from '@shared/dash'
 import { Brain, History, ListChecks, Plug, ScrollText, Settings as SettingsIcon, Workflow, type LucideIcon } from 'lucide-react'
 import type { DashPage } from '@shared/dash'
 import { dash } from './ui'
@@ -28,7 +29,14 @@ function initialPage(): DashPage {
 export function App(): React.JSX.Element {
   const [page, setPage] = useState<DashPage>(initialPage)
 
+  const [hotkeys, setHotkeys] = useState<DashSettings['hotkeys'] | null>(null)
+
   useEffect(() => dash.onNavigate(setPage), [])
+  useEffect(() => {
+    const load = (): void => void dash.settings().then((s) => setHotkeys(s.hotkeys))
+    load()
+    return dash.onChanged((w) => w === 'settings' && load())
+  }, [])
 
   return (
     <div className="flex h-full">
@@ -56,9 +64,13 @@ export function App(): React.JSX.Element {
           })}
         </nav>
         <div className="mt-auto space-y-1.5 px-2 text-xs text-zinc-500">
-          <Hint keys="Ctrl Alt Space" label="Ask" />
-          <Hint keys="Ctrl Alt S" label="Snip" />
-          <Hint keys="Ctrl Alt Esc" label="Stop" />
+          {hotkeys && (
+            <>
+              <Hint keys={hotkeys.bar} label="Ask" />
+              <Hint keys={hotkeys.screenshot} label="Snip" />
+              <Hint keys={hotkeys.panic} label="Stop" />
+            </>
+          )}
         </div>
       </aside>
       <main className="min-w-0 flex-1 overflow-y-auto px-10 py-8" data-page={page}>
@@ -81,7 +93,12 @@ function Hint({ keys, label }: { keys: string; label: string }): React.JSX.Eleme
     <div className="flex items-center justify-between">
       <span>{label}</span>
       <span className="flex gap-0.5">
-        {keys.split(' ').map((k) => (
+        {keys
+          .replace('Control', 'Ctrl')
+          .replace('Escape', 'Esc')
+          .replace('Super', 'Win')
+          .split('+')
+          .map((k) => (
           <kbd key={k} className="rounded border border-white/10 bg-white/[0.04] px-1 font-sans text-[10px] text-zinc-400">
             {k}
           </kbd>
