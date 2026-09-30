@@ -4,13 +4,13 @@ Orbit is a small assistant that sits in your Windows tray. Press a hotkey, say o
 
 I wanted something like the Gemini or Copilot sidebar, but for every app on my PC, open source, and not tied to one AI company. You can point it at your Claude subscription, an API key, or a model running locally in Ollama, and everything else works the same.
 
-It's early (version 0.4). It can remember things about you, work in the background, use Notion, Slack, Gmail and Google Calendar, set reminders, and run n8n-style workflows that you build by asking or on a canvas. The full roadmap is in [plan.md](plan.md).
+It's early (version 0.5). It can remember things about you, work in the background, use Notion, Slack, Gmail and Google Calendar, set reminders, and run n8n-style workflows that you build by asking or on a canvas. The full roadmap is in [plan.md](plan.md).
 
 ## Install
 
-Grab `Orbit Setup x.y.z.exe` from [Releases](../../releases) and run it. It isn't code-signed yet, so Windows will show a blue "Windows protected your PC" screen. Click "More info", then "Run anyway".
+Grab `Orbit-Setup-x.y.z.exe` from [Releases](../../releases) and run it. It isn't code-signed yet, so Windows will show a blue "Windows protected your PC" screen. Click "More info", then "Run anyway".
 
-After that Orbit lives in the tray. Click the icon to open the bar, or right-click it for the dashboard, where you connect services, look through your memory and history, and see background jobs.
+After that Orbit starts with Windows and keeps itself up to date (both can be switched off in Settings). It lives in the tray. Click the icon to open the bar, or right-click it for the dashboard, where you connect services, look through your memory and history, and see background jobs.
 
 ## Using it
 
@@ -22,7 +22,13 @@ After that Orbit lives in the tray. Click the icon to open the bar, or right-cli
 
 If you had text selected when you opened the bar, it shows up as a small chip above the input, next to one for the app you were in. Remove either one if you don't want to send it. Press Enter to send, Esc or click anywhere else to close, Ctrl+N to start over.
 
-When the answer is a rewrite of your selection, click "Paste back" and Orbit puts it where your selection was. Your clipboard is put back the way it was afterwards.
+When you have text selected, a row of quick actions shows up: Explain, Summarise, Fix grammar, Translate and Reply. Fix grammar puts the corrected text straight back where your selection was; Reply copies a draft to your clipboard. You can change the list in `settings.json`.
+
+For any other answer that rewrites your selection, click "Paste back". Your clipboard is put back the way it was afterwards.
+
+In a browser, Orbit also picks up the address of the tab you're on, so "what's this article saying?" can read the whole page, not just what you selected.
+
+Every conversation is kept in the dashboard's History, and you can pick one up again from there.
 
 A few commands you can type in the bar:
 
@@ -34,17 +40,25 @@ A few commands you can type in the bar:
 
 Speech-to-text runs on your own machine using NVIDIA's Parakeet model through [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). No account, no word limit, nothing leaves your PC. The first time you use it, Orbit downloads the model (482 MB). On my 4-core i5 laptop it turns 10 seconds of speech into text in about 1.3 seconds. It only does English for now.
 
+You can press the hotkey once to start and again to send, or switch to hold-to-talk in Settings: hold while you speak, let go to send.
+
 If you'd rather use [Wispr Flow](https://wisprflow.ai), set `voice.engine` to `"wispr"` in settings and Orbit will trigger it with Wispr's own shortcut.
 
 ## Memory
 
 Tell Orbit "remember that Sam is my cofounder, his email is sam@example.com" and it saves that on your PC. Later, when you ask something related ("email Sam the notes"), the matching memories go along with your question, so you don't have to repeat yourself. You can see, edit and delete everything it knows in the dashboard.
 
+When you mention something worth keeping in passing ("my dentist is Dr. Mehta, 022 5555 0100"), Orbit shows a small "Remember this?" chip. It only saves if you click Save.
+
 Mark a memory private and it's only ever sent to models running on your own machine, like Ollama. Orbit refuses to store anything that looks like a password, card number or API key, even if you ask.
 
 ## Background jobs
 
-Say "research the best Postgres hosting for a startup in India, in the background" and Orbit hands it to a separate agent so you can keep going. When it's done you get a notification, and the result is saved as a markdown file (the dashboard has it too). For jobs that split up neatly, it can run up to four agents at the same time and put their answers together.
+Say "research the best Postgres hosting for a startup in India, in the background" and Orbit hands it to a separate agent so you can keep going. When it's done you get a notification, and the result is saved as a markdown file (the dashboard has it too). For jobs that split up neatly, it can run up to four agents at the same time and put their answers together. If a job needs something from you halfway through, it asks in the bar and waits.
+
+## Your files
+
+Orbit can read files in the folders you allow (Downloads and Desktop to start; change them in Settings). It reads PDFs and plain text, so "summarise the PDFs in my Downloads" works, and so does a workflow that reads each new invoice that lands there. It can't read anything outside those folders, even through shortcuts.
 
 ## Reminders and workflows
 
@@ -82,9 +96,11 @@ You can also use an Anthropic API key (`/key anthropic sk-...`) or anything with
 
 Web search needs a free key from [Brave Search](https://brave.com/search/api/) or Tavily.
 
+If you're offline, or your Claude plan hits its limit, Orbit can fall back to a model running in Ollama on your PC. Offline it switches by itself and tells you; at a limit it asks first.
+
 ## What it's allowed to do
 
-Anything that changes something (sending, posting, writing, deleting) shows you a card first and waits for you to approve it. You can change that per tool in settings: always ask, always allow, or never. Text you select and pages Orbit reads are treated as data, so a web page can't talk the model into doing something. Every tool call is written to `%APPDATA%\Orbit\logs\audit.jsonl` if you want to check what happened.
+Anything that changes something (sending, posting, writing, deleting) shows you a card first and waits for you to approve it. You can change that per tool in settings: always ask, always allow, or never. Text you select and pages Orbit reads are treated as data, so a web page can't talk the model into doing something. Every tool call is logged, and the dashboard's Logs page shows what was asked, whether you approved it, and what came back.
 
 ## Working on it
 
