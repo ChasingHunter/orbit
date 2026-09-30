@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import type { ContextItem } from '@shared/types'
 import { join } from 'node:path'
 import { dataDir, ensureDataDirs } from './paths'
-import { installLogging } from './log'
+import { installLogging, logInfo } from './log'
 import { settings } from './settingsStore'
 import { setSecret } from './secrets'
 import { Conversation } from './core/conversation'
@@ -133,7 +133,12 @@ function registerIpc(): void {
   ipcMain.on('bar:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
   ipcMain.on('bar:voice-toggle', () => void voice.toggle())
   ipcMain.on('bar:voice-ended', () => voice.ended())
-  ipcMain.handle('stt:transcribe', (_e, samples: Float32Array) => transcribe(samples))
+  ipcMain.handle('stt:transcribe', async (_e, samples: Float32Array) => {
+    const t0 = Date.now()
+    const text = await transcribe(samples)
+    logInfo(`stt: ${(samples.length / 16000).toFixed(1)}s audio -> ${text.length} chars in ${Date.now() - t0} ms`)
+    return text
+  })
   ipcMain.on('bar:hide', () => {
     void voice.cancel()
     hideBar()

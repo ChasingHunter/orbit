@@ -16,6 +16,10 @@ function write(level: string, args: unknown[]): void {
   }
 }
 
+export function logInfo(...args: unknown[]): void {
+  write('INFO', args)
+}
+
 export function installLogging(onError?: (message: string) => void): void {
   const origError = console.error.bind(console)
   const origWarn = console.warn.bind(console)

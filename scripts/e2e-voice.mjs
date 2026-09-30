@@ -1,11 +1,13 @@
 // Voice e2e: Chromium's fake mic plays a WAV; drives hotkey → record → stop → local transcribe → auto-submit.
 // Run: npm run build && node scripts/e2e-voice.mjs [path.wav]
 import { _electron as electron } from 'playwright'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
-const wav = resolve(process.argv[2] ?? join(root, 'out', 'stt', 'sample0.wav'))
+const wav = resolve(process.argv[2] ?? join(root, 'test', 'fixtures', 'speech0.wav'))
+// Chromium plays silence for a missing file instead of failing, so check up front.
+if (!existsSync(wav)) throw new Error(`Missing audio fixture: ${wav}`)
 const dataDir = join(root, 'out', 'e2e-voice-profile')
 rmSync(dataDir, { recursive: true, force: true })
 mkdirSync(dataDir, { recursive: true })

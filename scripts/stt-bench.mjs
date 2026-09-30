@@ -1,5 +1,5 @@
 // Offline STT check: transcribe WAVs with the installed Parakeet model, report accuracy inputs + speed.
-// Run: node scripts/stt-bench.mjs out/stt/*.wav
+// Run: node scripts/stt-bench.mjs test/fixtures/*.wav
 import sherpa from 'sherpa-onnx-node'
 import { cpus } from 'node:os'
 import { join } from 'node:path'

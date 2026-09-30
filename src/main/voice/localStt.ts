@@ -5,8 +5,9 @@ import { pipeline } from 'node:stream/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { cpus } from 'node:os'
-import { OfflineRecognizer } from 'sherpa-onnx-node'
+import type { OfflineRecognizer } from 'sherpa-onnx-node'
 import { paths } from '../paths'
+import { logInfo } from '../log'
 
 // Offline speech-to-text: NVIDIA Parakeet TDT 0.6B v2 (int8) via sherpa-onnx.
 // English, punctuation + casing built in, faster than real time on a laptop CPU.
@@ -61,7 +62,12 @@ export function installModel(onProgress: (fraction: number, phase: 'download' | 
 let recognizer: Promise<OfflineRecognizer> | undefined
 
 function getRecognizer(): Promise<OfflineRecognizer> {
-  recognizer ??= OfflineRecognizer.createAsync({
+  // Loaded on first use: if the native addon is broken, only voice fails, not the whole app.
+  const t0 = Date.now()
+  recognizer ??= import('sherpa-onnx-node').then((mod) => {
+    // CommonJS package: under dynamic import() its exports sit on `default`.
+    const { OfflineRecognizer } = mod.default ?? mod
+    return OfflineRecognizer.createAsync({
     featConfig: { sampleRate: 16000, featureDim: 80 },
     modelConfig: {
       transducer: {
@@ -75,6 +81,10 @@ function getRecognizer(): Promise<OfflineRecognizer> {
       provider: 'cpu',
       debug: 0
     }
+    })
+  }).then((rec) => {
+    logInfo(`stt: model loaded in ${Date.now() - t0} ms`)
+    return rec
   }).catch((err) => {
     recognizer = undefined
     throw err
