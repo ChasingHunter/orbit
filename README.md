@@ -51,6 +51,8 @@ You can also attach files: drag them onto the bar, paste them, or click the pape
 
 In a browser, Orbit also picks up the address of the tab you're on, so "what's this article saying?" can read the whole page, not just what you selected.
 
+The last answer has a Retry button, and hovering your last message shows a pencil to edit it; either one replaces that exchange instead of adding to it. The small menu next to the paperclip switches the model for the current chat only (a new chat goes back to your default). Answers can include tables and math formulas.
+
 Every conversation is kept in the dashboard's History, and you can pick one up again from there.
 
 A few commands you can type in the bar:

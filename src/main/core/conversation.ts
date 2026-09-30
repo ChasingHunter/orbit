@@ -8,7 +8,7 @@ import { fallbackModel, isCloudModel, isOnline } from '../runners/fallback'
 import type { RunnerSession } from '../runners/types'
 import { runnableTools } from './tools/registry'
 import { searchMemories, type Memory } from './memory'
-import { addMessage, createConversation, getMessages } from './history'
+import { addMessage, createConversation, deleteLastExchange, getMessages } from './history'
 import { recordUsage } from './usage'
 import type { RunnableTool } from './tools/types'
 
@@ -78,6 +78,8 @@ export class Conversation {
 
   /** Set by "use the local model for now" after a usage limit; cleared on restart. */
   private override: string | undefined
+  /** Picked in the bar for this chat only; cleared by a new chat. */
+  private chatModel: string | undefined
 
   constructor(
     private emit: Emit,
@@ -88,12 +90,21 @@ export class Conversation {
     this.override = ref
   }
 
+  setChatModel(ref: string | undefined): void {
+    this.chatModel = ref
+  }
+
+  /** The model the next message goes to, as the bar's model picker shows it. */
+  get currentModel(): string {
+    return this.override ?? this.chatModel ?? (this.quickChat ? settings.current.models.quick : settings.current.models.chat)
+  }
+
   /**
    * The model for this turn: the usual one, a temporary override, or a local one when offline.
    * Offline, most tools can't work and small local models get confused by them, so none are given.
    */
   private async pickModel(): Promise<{ ref: string; tools: boolean }> {
-    const usual = this.override ?? (this.quickChat ? settings.current.models.quick : settings.current.models.chat)
+    const usual = this.currentModel
     if (isOnline() || !isCloudModel(usual)) return { ref: usual, tools: true }
     const local = await fallbackModel()
     if (!local) throw new Error("You're offline and no local model is set up. Install Ollama and pull a model (e.g. ollama pull qwen3:4b), then try again.")
@@ -194,6 +205,25 @@ export class Conversation {
     this.abort?.abort()
   }
 
+  /**
+   * Retry or edit: drops the last exchange and sends this instead. The model session can't
+   * forget a turn, so a new one starts with the earlier messages carried over as text.
+   */
+  rewind(text: string, context: ContextItem[]): string {
+    if (this.abort) throw new Error('Still working on the previous request')
+    const id = this.conversationId
+    if (id) {
+      deleteLastExchange(id)
+      const quick = this.quickChat
+      const model = this.chatModel
+      this.resume(id)
+      this.quickChat = quick
+      this.chatModel = model
+      if (!getMessages(id).length) this.carryOver = ''
+    }
+    return this.submit(text, context)
+  }
+
   /** Reopens a saved conversation: new messages are added to it and the model sees what came before. */
   resume(conversationId: string): { role: 'user' | 'assistant'; text: string }[] {
     this.reset()
@@ -212,5 +242,6 @@ export class Conversation {
     this.context = []
     this.conversationId = undefined
     this.quickChat = false
+    this.chatModel = undefined
   }
 }

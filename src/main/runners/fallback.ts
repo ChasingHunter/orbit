@@ -6,7 +6,7 @@ import { isLocalModel } from './index'
 
 let ollamaCache: { at: number; models: string[] } | undefined
 
-async function ollamaModels(): Promise<string[]> {
+export async function ollamaModels(): Promise<string[]> {
   if (ollamaCache && Date.now() - ollamaCache.at < 60_000) return ollamaCache.models
   const cfg = settings.current.providers.ollama
   const base = cfg?.type === 'openai-compatible' ? cfg.baseURL.replace(/\/v1\/?$/, '') : 'http://localhost:11434'

@@ -53,6 +53,12 @@ export interface OrbitApi {
   onEvent(cb: (e: BarEvent) => void): () => void
   submit(text: string, context: ContextItem[], opts?: { quick?: boolean }): Promise<{ turnId: string }>
   cancel(): void
+  /** Retry or edit: replaces the last exchange with this message. */
+  rewind(text: string, context: ContextItem[]): Promise<{ turnId: string }>
+  /** Models the picker offers, and the one this chat uses. */
+  models(): Promise<{ current: string; options: { ref: string; label: string }[] }>
+  /** Model for this chat only ('' goes back to the default). */
+  setModel(ref: string): void
   newChat(): void
   approve(id: string, decision: 'once' | 'chat' | 'deny'): void
   answer(id: string, text: string): void

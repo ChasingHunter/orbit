@@ -26,6 +26,13 @@ export function getMessages(conversationId: string): MessageRow[] {
   return getDb().prepare('SELECT id, role, text, created_at FROM messages WHERE conversation_id = ? ORDER BY id').all(conversationId) as MessageRow[]
 }
 
+/** Deletes the last user message and everything after it (retry / edit the last message). */
+export function deleteLastExchange(conversationId: string): void {
+  getDb()
+    .prepare("DELETE FROM messages WHERE conversation_id = ? AND id >= (SELECT MAX(id) FROM messages WHERE conversation_id = ? AND role = 'user')")
+    .run(conversationId, conversationId)
+}
+
 export function getConversation(id: string): ConversationRow | undefined {
   return getDb().prepare('SELECT * FROM conversations WHERE id = ?').get(id) as ConversationRow | undefined
 }

@@ -14,9 +14,11 @@ import {
   LayoutDashboard,
   Loader2,
   MessageCircleQuestion,
+  Pencil,
   Mic,
   Paperclip,
   Plus,
+  RotateCcw,
   ScanText,
   ShieldAlert,
   Square,
@@ -74,6 +76,10 @@ export function App(): React.JSX.Element {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
+  /** Set while the input holds an edit of the last message. */
+  const [editing, setEditing] = useState(false)
+  const [models, setModels] = useState<{ current: string; options: { ref: string; label: string }[] }>({ current: '', options: [] })
+  const loadModels = (): void => void api.models().then(setModels)
   useEffect(() => {
     // The picker's Cancel button fires a native "cancel" event that React doesn't expose.
     const el = fileRef.current
@@ -88,8 +94,8 @@ export function App(): React.JSX.Element {
   const autoSubmitMs = useRef<number | null>(null)
   const awaitingTranscript = useRef(false)
   const submitTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const state = useRef({ input, context, busy })
-  state.current = { input, context, busy }
+  const state = useRef({ input, context, busy, editing, entries })
+  state.current = { input, context, busy, editing, entries }
 
   const updateAssistant = useCallback((id: string, fn: (e: Assistant) => Assistant) => {
     setEntries((all) => all.map((e) => (e.kind === 'assistant' && e.id === id ? fn(e) : e)))
@@ -100,6 +106,8 @@ export function App(): React.JSX.Element {
     api.newChat()
     setEntries([])
     setApprovals([])
+    setEditing(false)
+    setTimeout(loadModels, 0)
     inputRef.current?.focus()
   }
 
@@ -115,6 +123,12 @@ export function App(): React.JSX.Element {
     const { input: typed, context: ctx, busy: isBusy } = state.current
     const text = override?.text ?? typed
     if (!text.trim() || isBusy) return
+    if (state.current.editing && !override) {
+      setInput('')
+      setEditing(false)
+      void redo(text)
+      return
+    }
     if (!override) setInput('')
     api.stopSpeaking()
     const { turnId } = await api.submit(text, ctx, override ? { quick: true } : undefined)
@@ -141,6 +155,7 @@ export function App(): React.JSX.Element {
           speechOn = speakMode.current !== 'off'
           setContext(ev.context)
           setQuickActions(ev.quickActions ?? [])
+          loadModels()
           autoSubmitMs.current = ev.autoSubmitMs
           setTimeout(() => inputRef.current?.focus(), 0)
           break
@@ -305,7 +320,10 @@ export function App(): React.JSX.Element {
       e.preventDefault()
       void submit()
     } else if (e.key === 'Escape') {
-      close()
+      if (state.current.editing) {
+        setEditing(false)
+        setInput('')
+      } else close()
     } else if (e.key.toLowerCase() === 'n' && e.ctrlKey) {
       e.preventDefault()
       newChat()
@@ -320,6 +338,33 @@ export function App(): React.JSX.Element {
   const decide = (id: string, decision: 'once' | 'chat' | 'deny'): void => {
     api.approve(id, decision)
     setApprovals((a) => a.filter((r) => r.id !== id))
+  }
+
+  /** Replaces the last exchange: Retry sends the same text again, Edit sends the new text. */
+  const redo = async (text: string): Promise<void> => {
+    const all = state.current.entries
+    const at = all.findLastIndex((e) => e.kind === 'user')
+    if (at < 0 || state.current.busy) return
+    const last = all[at] as Extract<Entry, { kind: 'user' }>
+    api.stopSpeaking()
+    setEntries(all.slice(0, at))
+    const { turnId } = await api.rewind(text, last.context)
+    setEntries((now) => [
+      ...now,
+      { kind: 'user', id: `u-${turnId}`, text, context: last.context },
+      { kind: 'assistant', id: turnId, text: '', tools: [], done: false, canPaste: last.context.some((c) => c.kind === 'selection') }
+    ])
+    setBusy(true)
+  }
+
+  const startEdit = (text: string): void => {
+    setEditing(true)
+    setInput(text)
+    setTimeout(() => {
+      const el = inputRef.current
+      el?.focus()
+      el?.setSelectionRange(text.length, text.length)
+    }, 0)
   }
 
   const addFiles = async (files: File[]): Promise<void> => {
@@ -345,6 +390,10 @@ export function App(): React.JSX.Element {
   }
 
   const hasThread = entries.length > 0 || approvals.length > 0 || questions.length > 0
+  const lastUser = entries.findLast((e) => e.kind === 'user')
+  const lastUserId = lastUser?.id
+  const lastUserText = lastUser?.kind === 'user' ? lastUser.text : ''
+  const lastAssistantId = entries.findLast((e) => e.kind === 'assistant')?.id
 
   return (
     <div
@@ -392,7 +441,12 @@ export function App(): React.JSX.Element {
                   }}
                 />
               ) : (
-                <EntryView key={e.id} entry={e} />
+                <EntryView
+                  key={e.id}
+                  entry={e}
+                  onRetry={!busy && e.id === lastAssistantId ? () => void redo(lastUserText) : undefined}
+                  onEdit={!busy && !editing && e.kind === 'user' && e.id === lastUserId ? () => startEdit(e.text) : undefined}
+                />
               )
             )}
             {approvals.map((r) => (
@@ -434,6 +488,21 @@ export function App(): React.JSX.Element {
             </div>
           )}
 
+          {editing && (
+            <div className="flex items-center gap-2 px-3 pt-2 text-xs text-sky-300">
+              <Pencil size={12} />
+              <span className="flex-1">Editing your last message. Enter sends it in place of the old one.</span>
+              <button
+                className="rounded px-1.5 py-0.5 text-zinc-400 hover:bg-white/10 hover:text-zinc-100"
+                onClick={() => {
+                  setEditing(false)
+                  setInput('')
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-1.5 px-2.5 py-2">
             <button
               title={listening ? 'Stop dictation' : 'Dictate'}
@@ -465,6 +534,26 @@ export function App(): React.JSX.Element {
               style={{ fieldSizing: 'content' } as React.CSSProperties}
             />
             {speaking && <IconButton icon={VolumeX} label="Stop speaking" onClick={() => api.stopSpeaking()} />}
+            {models.options.length > 1 && (
+              <select
+                value={models.current}
+                disabled={busy}
+                onChange={(e) => {
+                  api.setModel(e.target.value)
+                  setModels((m) => ({ ...m, current: e.target.value }))
+                  inputRef.current?.focus()
+                }}
+                title="Model for this chat"
+                aria-label="Model for this chat"
+                className="max-w-[140px] shrink-0 cursor-pointer truncate rounded-lg bg-transparent px-1.5 py-1 text-xs text-zinc-400 outline-none hover:bg-white/10 hover:text-zinc-100 disabled:opacity-50"
+              >
+                {models.options.map((o) => (
+                  <option key={o.ref} value={o.ref} className="bg-zinc-900 text-zinc-200">
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            )}
             <IconButton icon={Paperclip} label="Attach files" onClick={pickFiles} />
             <input
               ref={fileRef}
@@ -559,7 +648,7 @@ function formatSize(bytes: number): string {
 
 const TOOL_ICONS: Record<string, LucideIcon> = { web_search: Globe, web_fetch: Globe, notify: Bell }
 
-function EntryView({ entry }: { entry: Entry }): React.JSX.Element {
+function EntryView({ entry, onRetry, onEdit }: { entry: Entry; onRetry?: () => void; onEdit?: () => void }): React.JSX.Element {
   if (entry.kind === 'notice') {
     const error = entry.level === 'error'
     const action = entry.action
@@ -595,7 +684,17 @@ function EntryView({ entry }: { entry: Entry }): React.JSX.Element {
   }
   if (entry.kind === 'user') {
     return (
-      <div className="flex justify-end">
+      <div className="group flex items-center justify-end gap-1">
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            title="Edit"
+            aria-label="Edit message"
+            className="rounded p-1 text-zinc-500 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white/10 hover:text-zinc-200 focus:opacity-100"
+          >
+            <Pencil size={12} />
+          </button>
+        )}
         <div className="max-w-[85%] rounded-2xl rounded-br-md bg-white/[0.07] px-3 py-1.5 whitespace-pre-wrap text-zinc-200">
           {entry.text}
         </div>
@@ -645,9 +744,19 @@ function EntryView({ entry }: { entry: Entry }): React.JSX.Element {
         </div>
       )}
       {a.note && <div className="flex items-center gap-1.5 text-xs text-emerald-300"><Check size={13} />{a.note}</div>}
+      {a.done && !a.text && onRetry && (
+        <ActionButton icon={RotateCcw} onClick={onRetry}>
+          Retry
+        </ActionButton>
+      )}
       {a.done && a.text && (
         <div className="flex gap-1.5">
           <CopyButton text={a.text} />
+          {onRetry && (
+            <ActionButton icon={RotateCcw} onClick={onRetry}>
+              Retry
+            </ActionButton>
+          )}
           {speechOn && (
             <ActionButton icon={Volume2} onClick={() => (window.orbit.stopSpeaking(), window.orbit.speak(a.text))}>
               Read aloud

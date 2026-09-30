@@ -33,6 +33,7 @@ import { z } from 'zod'
 import { browserUrl, startBrowserUrlHelper, stopBrowserUrlHelper } from './os/browserUrl'
 import { registerDashboardIpc, setVoiceInstaller } from './dashboardIpc'
 import { attachData, attachPaths, pruneAttachments } from './core/attachments'
+import { modelChoices } from './runners/choices'
 import { claudeStatus, runChecks } from './system/health'
 import { openDashboard } from './windows/dashboard'
 import { pasteInto } from './os/writeback'
@@ -216,6 +217,9 @@ function registerIpc(): void {
     return { turnId: conversation.submit(text, context, opts) }
   })
   ipcMain.on('bar:cancel', () => conversation.cancel())
+  ipcMain.handle('bar:rewind', (_e, text: string, context: ContextItem[]) => ({ turnId: conversation.rewind(text, context) }))
+  ipcMain.handle('bar:models', () => modelChoices(conversation.currentModel))
+  ipcMain.on('bar:set-model', (_e, ref: string) => conversation.setChatModel(ref || undefined))
   ipcMain.on('bar:new', () => {
     clearChatAllows()
     conversation.reset()
