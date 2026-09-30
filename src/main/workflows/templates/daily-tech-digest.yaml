@@ -5,30 +5,32 @@ missed: run
 model: chat
 output: "{{steps.write.output}}"
 steps:
-  - id: hn
-    tool: read_feed
-    args: { url: "https://news.ycombinator.com/rss", limit: 30 }
-    retries: 1
-  - id: tech
-    tool: read_feed
-    args: { url: "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en", limit: 40, sinceHours: 30 }
-    retries: 1
-  - id: ai
-    tool: read_feed
-    args: { url: "https://news.google.com/rss/search?q=artificial+intelligence+when:1d&hl=en-US&gl=US&ceid=US:en", limit: 40 }
-    retries: 1
-  - id: startups
-    tool: read_feed
-    args: { url: "https://news.google.com/rss/search?q=startup+funding+when:1d&hl=en-US&gl=US&ceid=US:en", limit: 30 }
-    retries: 1
-  - id: techcrunch
-    tool: read_feed
-    args: { url: "https://techcrunch.com/feed/", limit: 20, sinceHours: 30 }
-    retries: 1
-  - id: products
-    tool: read_feed
-    args: { url: "https://www.producthunt.com/feed", limit: 20 }
-    retries: 1
+  - id: fetch
+    parallel:
+      - id: hn
+        tool: read_feed
+        args: { url: "https://news.ycombinator.com/rss", limit: 30 }
+        retries: 1
+      - id: tech
+        tool: read_feed
+        args: { url: "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en", limit: 40, sinceHours: 30 }
+        retries: 1
+      - id: ai
+        tool: read_feed
+        args: { url: "https://news.google.com/rss/search?q=artificial+intelligence+when:1d&hl=en-US&gl=US&ceid=US:en", limit: 40 }
+        retries: 1
+      - id: startups
+        tool: read_feed
+        args: { url: "https://news.google.com/rss/search?q=startup+funding+when:1d&hl=en-US&gl=US&ceid=US:en", limit: 30 }
+        retries: 1
+      - id: techcrunch
+        tool: read_feed
+        args: { url: "https://techcrunch.com/feed/", limit: 20, sinceHours: 30 }
+        retries: 1
+      - id: products
+        tool: read_feed
+        args: { url: "https://www.producthunt.com/feed", limit: 20 }
+        retries: 1
   - id: write
     agent: |
       Write today's tech digest from the feeds below. Cover the whole world, not only the US.

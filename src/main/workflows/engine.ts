@@ -68,6 +68,9 @@ type Ctx = {
   workflow: string
   /** What an event trigger found, e.g. {{trigger.items}} or {{trigger.file}}. */
   trigger: TriggerData
+  /** Inside a foreach: the current item and its 1-based position. */
+  item?: string
+  index?: string
 }
 
 /** Replaces {{steps.x.output}}, {{input}}, {{date}}, {{now}} and {{workflow}}. Unknown paths become empty. */
@@ -84,6 +87,40 @@ function renderDeep(value: unknown, ctx: Ctx): unknown {
   if (Array.isArray(value)) return value.map((v) => renderDeep(v, ctx))
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, renderDeep(v, ctx)]))
   return value
+}
+
+/**
+ * Splits a step's output into items for foreach. "auto" understands JSON arrays, numbered
+ * lists like read_feed's (each number starts an item, following indented lines belong to it),
+ * blank-line separated blocks, and otherwise one item per line.
+ */
+export function splitItems(text: string, how: 'auto' | 'lines' | 'json' | 'blocks'): string[] {
+  const t = text.replace(/<\/?untrusted_[^>]*>/g, '').trim()
+  if (!t) return []
+  const asJson = (): string[] | undefined => {
+    try {
+      const v = JSON.parse(t)
+      return Array.isArray(v) ? v.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))) : undefined
+    } catch {
+      return undefined
+    }
+  }
+  const lines = (): string[] => t.split('\n').map((l) => l.trim()).filter(Boolean)
+  const blocks = (): string[] => t.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean)
+  if (how === 'json') return asJson() ?? []
+  if (how === 'lines') return lines()
+  if (how === 'blocks') return blocks()
+  const json = asJson()
+  if (json) return json
+  if (/^\s*1[.)]\s/m.test(t)) {
+    const out: string[] = []
+    for (const line of t.split('\n')) {
+      if (/^\s*\d+[.)]\s/.test(line)) out.push(line.trim())
+      else if (out.length && line.trim()) out[out.length - 1] += `\n${line.trim()}`
+    }
+    return out
+  }
+  return t.includes('\n\n') ? blocks() : lines()
 }
 
 const truthy = (s: string): boolean => !!s.trim() && !/^(false|no|0|none|null)$/i.test(s.trim())
@@ -186,7 +223,7 @@ class WorkflowEngine extends EventEmitter {
     const d = new Date()
     const ctx: Ctx = { steps: {}, input, date: d.toISOString().slice(0, 10), now: localNow(d), workflow: name, trigger: triggerData }
     try {
-      const last = wf.prompt ? await this.runAgentic(wf, ctx, abort.signal) : await this.runSteps(wf, id, ctx, abort.signal)
+      const last = wf.prompt ? await this.runAgentic(wf, ctx, abort.signal) : await this.runSteps(wf, id, wf.steps, ctx, abort.signal)
       const output = wf.output ? render(wf.output, ctx) : last
       this.finish(id, 'done', output)
       if (trigger !== 'manual') notice(`${name} finished`, output.replace(/[#*_`]/g, '').slice(0, 180))
@@ -212,10 +249,15 @@ class WorkflowEngine extends EventEmitter {
     return runAgent(prompt, wf.model, signal, { tools: wf.tools.length ? wf.tools : undefined })
   }
 
-  private async runSteps(wf: Workflow, runId: string, ctx: Ctx, signal: AbortSignal): Promise<string> {
+  /**
+   * Runs a list of steps in order. `scope` prefixes step ids in the log so nested and repeated
+   * steps (inside a loop) each get their own row, e.g. "each[2].summarize".
+   */
+  private async runSteps(wf: Workflow, runId: string, steps: Step[], ctx: Ctx, signal: AbortSignal, scope = ''): Promise<string> {
     let last = ''
-    for (const step of wf.steps) {
-      if (signal.aborted) throw new StepError(step.id, 'Cancelled', 'cancelled')
+    for (const step of steps) {
+      const logId = scope + step.id
+      if (signal.aborted) throw new StepError(logId, 'Cancelled', 'cancelled')
       const started = now()
       const record = (status: StepStatus, fields: { input?: string; output?: string; error?: string; attempts?: number }): void => {
         this.db()
@@ -223,7 +265,7 @@ class WorkflowEngine extends EventEmitter {
             `INSERT OR REPLACE INTO workflow_steps (run_id, step_id, kind, status, input, output, error, attempts, started_at, finished_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
           )
-          .run(runId, step.id, stepKind(step), status, fields.input ?? null, fields.output ?? null, fields.error ?? null, fields.attempts ?? 0, started, status === 'running' ? null : now())
+          .run(runId, logId, stepKind(step), status, fields.input ?? null, fields.output ?? null, fields.error ?? null, fields.attempts ?? 0, started, status === 'running' ? null : now())
         this.emit('change')
       }
 
@@ -234,19 +276,80 @@ class WorkflowEngine extends EventEmitter {
       }
       record('running', {})
       try {
-        const { input, output, attempts } = await this.runStep(wf, step, ctx, signal)
+        const { input, output, attempts } = await this.runOne(wf, runId, step, ctx, signal, logId)
         record('done', { input, output: clip(output), attempts })
         ctx.steps[step.id] = { output }
         last = output
       } catch (err) {
         record('failed', { error: (err as Error).message })
-        throw err instanceof StepError ? err : new StepError(step.id, (err as Error).message)
+        throw err instanceof StepError ? err : new StepError(logId, (err as Error).message)
       }
     }
     return last
   }
 
-  private async runStep(wf: Workflow, step: Step, ctx: Ctx, signal: AbortSignal): Promise<{ input: string; output: string; attempts: number }> {
+  /** Runs one step, including branch, loop and parallel steps that contain more steps. */
+  private async runOne(
+    wf: Workflow,
+    runId: string,
+    step: Step,
+    ctx: Ctx,
+    signal: AbortSignal,
+    logId: string
+  ): Promise<{ input: string; output: string; attempts: number }> {
+    if ('if' in step) {
+      let yes: boolean
+      let asked = ''
+      if (typeof step.if === 'string') {
+        asked = render(step.if, ctx)
+        yes = truthy(asked)
+      } else {
+        asked = render(step.if.ask, ctx)
+        const data = step.if.input ? render(step.if.input, ctx) : ''
+        const answer = await runAgent(
+          `Answer with only "yes" or "no".\n\nQuestion: ${asked}${data ? `\n\n<input>\n${data}\n</input>` : ''}`,
+          'quick',
+          signal,
+          { tools: [], system: WORKFLOW_AGENT_SYSTEM }
+        )
+        yes = /^\W*yes\b/i.test(answer)
+      }
+      const branch = yes ? step.then : step.else
+      const out = await this.runSteps(wf, runId, branch, ctx, signal, `${logId}.${yes ? 'then' : 'else'}.`)
+      return { input: `${clip(asked, 500)} -> ${yes ? 'yes' : 'no'}`, output: out, attempts: 1 }
+    }
+
+    if ('foreach' in step) {
+      const items = splitItems(render(step.foreach, ctx), step.split).slice(0, step.max)
+      const results: string[] = new Array(items.length)
+      let next = 0
+      const worker = async (): Promise<void> => {
+        while (next < items.length) {
+          const i = next++
+          // Each item gets its own copy of step outputs so parallel items don't overwrite each other.
+          const child: Ctx = { ...ctx, steps: { ...ctx.steps }, item: items[i], index: String(i + 1) }
+          results[i] = await this.runSteps(wf, runId, step.steps, child, signal, `${logId}[${i + 1}].`)
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(step.concurrency, items.length) }, worker))
+      const output = results.map((r, i) => (items.length > 1 ? `### ${i + 1}\n${r}` : r)).join('\n\n')
+      return { input: `${items.length} item${items.length === 1 ? '' : 's'}`, output, attempts: 1 }
+    }
+
+    if ('parallel' in step) {
+      const outs = await Promise.all(step.parallel.map((s) => this.runSteps(wf, runId, [s], ctx, signal, `${logId}.`)))
+      return { input: `${step.parallel.length} steps at once`, output: outs.join('\n\n'), attempts: 1 }
+    }
+
+    return this.runStep(wf, step, ctx, signal)
+  }
+
+  private async runStep(
+    wf: Workflow,
+    step: Exclude<Step, { if: unknown } | { foreach: unknown } | { parallel: unknown }>,
+    ctx: Ctx,
+    signal: AbortSignal
+  ): Promise<{ input: string; output: string; attempts: number }> {
     if ('approval' in step) {
       const preview = render(step.approval.preview, ctx)
       const title = step.approval.title ? render(step.approval.title, ctx) : 'Review before it continues'

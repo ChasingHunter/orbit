@@ -9,6 +9,11 @@ import { integrations } from '../../integrations/manager'
 
 const MAX_OUTPUT = 40_000
 
+/** Claude sees Orbit tools as mcp__orbit__<name>; accept that spelling anywhere a name is given. */
+export function normalizeToolName(name: string): string {
+  return name.replace(/^mcp__orbit__/, '')
+}
+
 export function allTools(): OrbitTool[] {
   return [...builtinTools, ...integrations.tools()]
 }
@@ -58,13 +63,13 @@ async function invoke(tool: OrbitTool, rawInput: unknown, opts: CallOptions): Pr
 
 /** Calls one tool by name outside a model conversation (used by workflows). */
 export function callTool(name: string, input: unknown, opts: CallOptions): Promise<ToolResult> {
-  const tool = allTools().find((t) => t.name === name)
+  const tool = allTools().find((t) => t.name === normalizeToolName(name))
   if (!tool) return Promise.resolve({ output: `Tool "${name}" isn't available. Is its integration connected?`, isError: true })
   return invoke(tool, input, opts)
 }
 
 export function hasSideEffect(name: string): boolean | undefined {
-  return allTools().find((t) => t.name === name)?.sideEffect
+  return allTools().find((t) => t.name === normalizeToolName(name))?.sideEffect
 }
 
 /**
@@ -77,7 +82,7 @@ export function runnableTools(
   only?: string[]
 ): RunnableTool[] {
   return allTools()
-    .filter((t) => policyFor(t) !== 'never' && !exclude.includes(t.name) && (!only || only.includes(t.name)))
+    .filter((t) => policyFor(t) !== 'never' && !exclude.includes(t.name) && (!only || only.map(normalizeToolName).includes(t.name)))
     .map((tool) => ({
       name: tool.name,
       description: tool.description,

@@ -4,6 +4,25 @@ import { nextRunFor, scheduler } from '../../scheduler'
 import { explain, parseWorkflow, workflowStore } from '../../../workflows/store'
 import { workflows } from '../../../workflows/engine'
 import { defineTool } from '../types'
+import { allTools } from '../registry'
+import type { Step, Workflow } from '../../../workflows/schema'
+
+/** Every tool name a workflow refers to, including nested steps, agent tool lists and poll triggers. */
+function toolNames(wf: Workflow): string[] {
+  const names: string[] = [...wf.tools]
+  if ('poll' in wf.trigger) names.push(wf.trigger.poll.tool)
+  const walk = (steps: Step[]): void => {
+    for (const s of steps) {
+      if ('tool' in s) names.push(s.tool)
+      if ('agent' in s) names.push(...s.tools)
+      if ('if' in s) walk([...s.then, ...s.else])
+      if ('foreach' in s) walk(s.steps)
+      if ('parallel' in s) walk(s.parallel)
+    }
+  }
+  walk(wf.steps)
+  return names
+}
 
 const SPEC = `YAML format:
 name: lowercase-with-dashes
@@ -37,6 +56,18 @@ steps:
     tool: gmail__send_gmail_message
     args: { to: "me@example.com", subject: "Digest {{date}}", body: "{{steps.write.output}}" }
     approved: true                          # runs without asking; only for steps behind a review step or that the user explicitly wants unattended
+More step types (they contain steps of their own):
+  - id: check
+    if: { ask: "Is this about a payment?", input: "{{trigger.output}}" }   # model answers yes/no; or if: "{{steps.x.output}}" (non-empty = yes)
+    then: [ ...steps ]
+    else: [ ...steps ]                     # optional
+  - id: each
+    foreach: "{{steps.fetch.output}}"      # JSON array, numbered list, blank-line blocks, or lines
+    max: 10
+    concurrency: 2
+    steps: [ ...steps using {{item}} and {{index}} ]
+  - id: fetch_all
+    parallel: [ ...steps that run at the same time ]
 Rules:
 - To DO something (notify, send, create, post), use a tool step with the exact tool name. An agent step only writes text; it can call tools only if you list them in its tools.
 - approved: true exists only on tool steps. Steps that change things and aren't approved: true ask for approval every run.
@@ -49,9 +80,15 @@ export const createWorkflow = defineTool({
   sideEffect: false, // approval happens below, after validation, so the user never approves YAML that won't load
   run: async ({ yaml }, { signal }) => {
     let name: string
+    yaml = yaml.replace(/mcp__orbit__/g, '')
     try {
       const wf = parseWorkflow(yaml)
       name = wf.name
+      const known = new Set(allTools().map((t) => t.name))
+      const unknown = [...new Set(toolNames(wf))].filter((n) => !known.has(n))
+      if (unknown.length) {
+        throw new Error(`unknown tool${unknown.length > 1 ? 's' : ''} ${unknown.join(', ')}. Available: ${[...known].join(', ')}`)
+      }
       if ('cron' in wf.trigger) nextRunFor({ cron: wf.trigger.cron })
     } catch (err) {
       throw new Error(`That YAML isn't valid: ${explain(err)}. Fix it and try again.`)

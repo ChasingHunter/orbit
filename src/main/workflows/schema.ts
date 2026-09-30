@@ -39,29 +39,75 @@ export const ApprovalStep = Base.extend({
   })
 })
 
-export const Step = z.union([ToolStep, AgentStep, ApprovalStep])
+type ToolStepT = z.infer<typeof ToolStep>
+type AgentStepT = z.infer<typeof AgentStep>
+type ApprovalStepT = z.infer<typeof ApprovalStep>
+type BaseT = z.infer<typeof Base>
+
+/** Run `then` or `else`. The condition is a template value, or a yes/no question for the model. */
+export type IfStepT = BaseT & { if: string | { ask: string; input?: string }; then: Step[]; else: Step[] }
+/** Run the inner steps once per item; inside them, {{item}} and {{index}} are available. */
+export type ForEachStepT = BaseT & {
+  foreach: string
+  split: 'auto' | 'lines' | 'json' | 'blocks'
+  max: number
+  concurrency: number
+  steps: Step[]
+}
+/** Run the inner steps at the same time. */
+export type ParallelStepT = BaseT & { parallel: Step[] }
+
+export type Step = ToolStepT | AgentStepT | ApprovalStepT | IfStepT | ForEachStepT | ParallelStepT
+
+// Loosely typed on purpose: nested steps are recursive, which zod can't infer on its own.
+const Steps = z.array(z.lazy((): z.ZodType<Step> => Step as z.ZodType<Step>))
+
+export const IfStep = Base.extend({
+  if: z.union([z.string(), z.strictObject({ ask: z.string(), input: z.string().optional() })]),
+  then: Steps,
+  else: Steps.default([])
+})
+
+export const ForEachStep = Base.extend({
+  foreach: z.string().describe('Template that produces the list, e.g. {{steps.fetch.output}}'),
+  split: z.enum(['auto', 'lines', 'json', 'blocks']).default('auto'),
+  max: z.number().int().min(1).max(100).default(20),
+  concurrency: z.number().int().min(1).max(5).default(1),
+  steps: Steps
+})
+
+export const ParallelStep = Base.extend({ parallel: Steps })
+
+export const Step: z.ZodType<Step> = z.union([ToolStep, AgentStep, ApprovalStep, IfStep, ForEachStep, ParallelStep]) as z.ZodType<Step>
+
+const KINDS = { tool: ToolStep, agent: AgentStep, approval: ApprovalStep, if: IfStep, foreach: ForEachStep, parallel: ParallelStep }
+type Kind = keyof typeof KINDS
 
 /**
- * Checks each step against the one schema its keys point to, so mistakes come back as
- * "steps.1.approved: unrecognized key" instead of zod's generic union error.
+ * Checks each step (and nested ones) against the one schema its keys point to, so mistakes
+ * come back as "steps.1.approved: unrecognized key" instead of zod's generic union error.
  */
-export function stepProblems(rawSteps: unknown): string[] {
+export function stepProblems(rawSteps: unknown, path = 'steps'): string[] {
   if (!Array.isArray(rawSteps)) return []
   const problems: string[] = []
   rawSteps.forEach((raw, i) => {
     const s = (raw ?? {}) as Record<string, unknown>
-    const kinds = ['tool', 'agent', 'approval'].filter((k) => k in s)
+    const here = `${path}.${i}`
+    const kinds = (Object.keys(KINDS) as Kind[]).filter((k) => k in s)
     if (kinds.length !== 1) {
-      problems.push(`steps.${i}: needs exactly one of tool, agent or approval (found ${kinds.join(', ') || 'none'})`)
+      problems.push(`${here}: needs exactly one of ${Object.keys(KINDS).join(', ')} (found ${kinds.join(', ') || 'none'})`)
       return
     }
-    const schema = { tool: ToolStep, agent: AgentStep, approval: ApprovalStep }[kinds[0] as 'tool' | 'agent' | 'approval']
-    const r = schema.safeParse(s)
-    if (!r.success) for (const issue of r.error.issues) problems.push(`steps.${i}.${issue.path.join('.') || kinds[0]}: ${issue.message}`)
+    const kind = kinds[0]
+    // Check the step's own fields here; nested lists get their own, more precise messages below.
+    const nested = kind === 'if' ? ['then', 'else'] : kind === 'foreach' ? ['steps'] : kind === 'parallel' ? ['parallel'] : []
+    const shallow = Object.fromEntries(Object.entries(s).map(([k, v]) => [k, nested.includes(k) ? [] : v]))
+    const r = KINDS[kind].safeParse(shallow)
+    if (!r.success) for (const issue of r.error.issues) problems.push(`${here}.${issue.path.join('.') || kind}: ${issue.message}`)
+    for (const key of nested) problems.push(...stepProblems(s[key], `${here}.${key}`))
   })
   return problems
 }
-export type Step = z.infer<typeof Step>
 
 const Every = z
   .string()
@@ -113,9 +159,12 @@ export const Workflow = z
 
 export type Workflow = z.infer<typeof Workflow>
 
-export function stepKind(s: Step): 'tool' | 'agent' | 'approval' {
+export function stepKind(s: Step): 'tool' | 'agent' | 'approval' | 'if' | 'foreach' | 'parallel' {
   if ('tool' in s) return 'tool'
   if ('agent' in s) return 'agent'
+  if ('if' in s) return 'if'
+  if ('foreach' in s) return 'foreach'
+  if ('parallel' in s) return 'parallel'
   return 'approval'
 }
 
