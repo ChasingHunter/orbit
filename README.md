@@ -4,7 +4,7 @@ Orbit is a small assistant that sits in your Windows tray. Press a hotkey, say o
 
 I wanted something like the Gemini or Copilot sidebar, but for every app on my PC, open source, and not tied to one AI company. You can point it at your Claude subscription, an API key, or a model running locally in Ollama, and everything else works the same.
 
-It's early (version 0.3). It can remember things about you, work in the background, use Notion, Slack, Gmail and Google Calendar, set reminders, and run workflows on a schedule. Event triggers, branching and a visual workflow editor are next. The full roadmap is in [plan.md](plan.md).
+It's early (version 0.4). It can remember things about you, work in the background, use Notion, Slack, Gmail and Google Calendar, set reminders, and run n8n-style workflows that you build by asking or on a canvas. The full roadmap is in [plan.md](plan.md).
 
 ## Install
 
@@ -53,6 +53,12 @@ Say "research the best Postgres hosting for a startup in India, in the backgroun
 Workflows are jobs Orbit runs on a schedule or when you ask. Describe one in the bar ("every Friday at 5, summarise my week and save it as a note") and Orbit writes it, shows it to you, and saves it once you approve. A workflow can call tools, ask a model to write or decide something, and stop to let you review before anything gets sent. Each run and step is logged on the dashboard's Workflows page.
 
 There's a ready-made one to start with: a daily tech digest that reads Hacker News, Google News, TechCrunch and Product Hunt every morning and writes you a short roundup of big tech, AI, startups and new products worth trying. Add it from the Workflows page.
+
+Workflows don't have to wait for a clock. They can start when a feed has new posts, when a web page (or one part of it, like a price) changes, when a search in Gmail or another connected app returns something new, when a file lands in a folder, or when another app calls a local webhook.
+
+Inside a workflow, steps can branch ("if the model thinks this email is about a payment, do this, otherwise that"), repeat for every item in a list, run side by side, or reshape data with a few lines of JavaScript. That code runs in a sandbox with no access to your files or the internet.
+
+If you'd rather see it than read YAML, the Workflows page has a visual editor: the flow is drawn as boxes you click to edit, with a palette for adding steps.
 
 Workflows only run while Orbit is running. If your PC was off at the scheduled time, Orbit asks, runs it, or skips it the next time it starts, depending on how the workflow is set up. They're plain YAML files in `%APPDATA%\Orbit\workflows` if you want to edit them by hand.
 
