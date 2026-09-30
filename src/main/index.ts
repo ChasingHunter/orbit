@@ -12,7 +12,8 @@ import { bindHotkeys } from './os/hotkeys'
 import { createTray } from './os/tray'
 import { currentSelection, startSelectionHook, stopSelectionHook } from './os/selection'
 import { snipRegion } from './os/screenshot'
-import { toggleWispr } from './os/wispr'
+import { VoiceController } from './voice/controller'
+import { transcribe, warmUp } from './voice/localStt'
 import { pasteInto } from './os/writeback'
 import { foregroundWindow, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
 
@@ -21,18 +22,12 @@ app.setPath('userData', join(dataDir, 'chromium'))
 if (!app.requestSingleInstanceLock()) app.quit()
 
 let prevWindow: Hwnd // window the user was in before Orbit took focus (for Replace)
-let listening = false
-
+const voice = new VoiceController(sendToBar)
 const conversation = new Conversation((turnId, event) => sendToBar({ type: 'agent', turnId, event }))
 
 function autoSubmitMs(): number | null {
   const v = settings.current.voice
   return v.autoSubmit ? v.autoSubmitDelayMs : null
-}
-
-function setListening(value: boolean): void {
-  listening = value
-  sendToBar({ type: 'listening', value })
 }
 
 /** Grabs active window + selection from the app the user is in, before the bar steals focus. */
@@ -50,40 +45,24 @@ async function captureContext(): Promise<ContextItem[]> {
   return items
 }
 
-async function startVoice(): Promise<void> {
-  if (settings.current.voice.engine !== 'wispr') return
-  if (await toggleWispr()) setListening(true)
-  else sendToBar({ type: 'notice', level: 'error', text: 'Wispr Flow hotkey not found. Set voice.wisprCombo in settings.json.' })
-}
-
-async function stopVoice(): Promise<void> {
-  if (!listening) return
-  await toggleWispr()
-  setListening(false)
-}
-
 /** Bar hotkey: open (+ start dictation) → press again to stop dictation → again to restart. */
 async function onBarHotkey(): Promise<void> {
   const w = bar()
   if (!w.isVisible()) {
     const context = await captureContext()
-    const voice = settings.current.voice.engine === 'wispr' && settings.current.voice.startOnBarOpen
     sendToBar({ type: 'open', context, autoSubmitMs: autoSubmitMs() })
     showBar()
-    if (voice) await startVoice()
+    if (settings.current.voice.startOnBarOpen) await voice.start()
     return
   }
-  if (listening) await stopVoice()
-  else if (settings.current.voice.engine === 'wispr') {
-    w.focus()
-    await startVoice()
-  }
+  w.focus()
+  await voice.toggle()
 }
 
 async function onScreenshot(): Promise<void> {
   const wasVisible = bar().isVisible()
   const context = wasVisible ? [] : await captureContext()
-  if (listening) await stopVoice()
+  await voice.cancel()
   hideBar()
   const snip = await snipRegion().catch((err) => {
     console.error('[snip]', err)
@@ -128,6 +107,10 @@ function handleCommand(text: string): boolean {
     }
     return true
   }
+  if (cmd === '/install-voice') {
+    void voice.install()
+    return true
+  }
   if (cmd === '/new') {
     conversation.reset()
     sendToBar({ type: 'reset' })
@@ -144,11 +127,11 @@ function registerIpc(): void {
   ipcMain.on('bar:cancel', () => conversation.cancel())
   ipcMain.on('bar:new', () => conversation.reset())
   ipcMain.on('bar:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
-  ipcMain.on('bar:voice-toggle', () => void (listening ? stopVoice() : startVoice()))
-  ipcMain.on('bar:voice-ended', () => setListening(false))
+  ipcMain.on('bar:voice-toggle', () => void voice.toggle())
+  ipcMain.on('bar:voice-ended', () => voice.ended())
+  ipcMain.handle('stt:transcribe', (_e, samples: Float32Array) => transcribe(samples))
   ipcMain.on('bar:hide', () => {
-    // Physical Esc already reaches Wispr as its own "dismiss" key.
-    setListening(false)
+    void voice.cancel()
     hideBar()
   })
   ipcMain.on('bar:copy', (_e, text: string) => void clipboard.writeText(text))
@@ -170,17 +153,18 @@ app.whenReady().then(() => {
   })
   createBar()
   setBarBlurHandler(() => {
-    if (listening) void stopVoice()
+    void voice.cancel()
     hideBar()
   })
   createTray({ openBar: () => void onBarHotkey(), screenshot: () => void onScreenshot(), quit: () => app.quit() })
   if (process.env.ORBIT_E2E) {
     // Test hook for scripts/e2e.ts; never set in normal runs.
-    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings } })
+    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice } })
     return
   }
   startSelectionHook()
   rebindHotkeys()
+  warmUp()
 })
 
 // Tray app: closing windows never quits.

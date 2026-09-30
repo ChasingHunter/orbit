@@ -18,6 +18,7 @@ export default defineConfig({
     resolve: { alias: shared },
     plugins: [react(), tailwindcss()],
     build: {
+      minify: true,
       rollupOptions: {
         input: {
           bar: resolve('src/renderer/bar/index.html'),

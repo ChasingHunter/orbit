@@ -23,8 +23,6 @@ export type ApprovalRequest = {
   input: unknown
 }
 
-export type ChatMessage = { role: 'user' | 'assistant'; text: string; images?: number }
-
 /** State pushed from main to the bar window. */
 export type BarEvent =
   | { type: 'open'; context: ContextItem[]; autoSubmitMs: number | null }
@@ -32,7 +30,10 @@ export type BarEvent =
   | { type: 'listening'; value: boolean }
   | { type: 'agent'; turnId: string; event: AgentEvent }
   | { type: 'approval'; request: ApprovalRequest }
-  | { type: 'notice'; level: 'info' | 'error'; text: string }
+  | { type: 'notice'; level: 'info' | 'error'; text: string; action?: { label: string; command: string } }
+  /** Local engine: start/stop mic capture in the bar. discard = drop audio (bar closed). */
+  | { type: 'record'; value: boolean; discard?: boolean }
+  | { type: 'progress'; id: string; label: string; value: number; done?: boolean }
   | { type: 'reset' }
 
 export interface OrbitApi {
@@ -42,6 +43,8 @@ export interface OrbitApi {
   newChat(): void
   approve(id: string, approved: boolean): void
   toggleVoice(): void
+  /** Local engine: 16 kHz mono samples -> text. */
+  transcribe(samples: Float32Array): Promise<string>
   /** Transcript arrived in the input (e.g. Wispr stopped from its own UI). */
   voiceEnded(): void
   hide(): void

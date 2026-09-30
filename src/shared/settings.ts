@@ -30,10 +30,11 @@ export const Settings = z.object({
 
   voice: z
     .object({
-      engine: z.enum(['wispr', 'off']).default('wispr'),
+      // local = offline Parakeet model (free, unlimited); wispr = trigger Wispr Flow.
+      engine: z.enum(['local', 'wispr', 'off']).default('local'),
       // Wispr combo as VK codes. Empty = read from Wispr's own config.json.
       wisprCombo: z.array(z.number().int()).default([]),
-      // Start Wispr automatically when the bar opens via hotkey.
+      // Start dictation automatically when the bar opens via hotkey.
       startOnBarOpen: z.boolean().default(true),
       autoSubmit: z.boolean().default(true),
       autoSubmitDelayMs: z.number().int().min(0).default(700)

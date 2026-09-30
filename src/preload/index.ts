@@ -13,6 +13,7 @@ const api: OrbitApi = {
   approve: (id, approved) => ipcRenderer.send('bar:approve', id, approved),
   toggleVoice: () => ipcRenderer.send('bar:voice-toggle'),
   voiceEnded: () => ipcRenderer.send('bar:voice-ended'),
+  transcribe: (samples) => ipcRenderer.invoke('stt:transcribe', samples),
   hide: () => ipcRenderer.send('bar:hide'),
   copy: (text) => ipcRenderer.send('bar:copy', text),
   replaceSelection: (text) => ipcRenderer.invoke('bar:replace', text),

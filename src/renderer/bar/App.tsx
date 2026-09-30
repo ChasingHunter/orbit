@@ -6,6 +6,7 @@ import {
   Check,
   ClipboardPaste,
   Copy,
+  Download,
   Globe,
   Loader2,
   Mic,
@@ -21,15 +22,18 @@ import {
 } from 'lucide-react'
 import type { ApprovalRequest, BarEvent, ContextItem } from '@shared/types'
 import { Markdown } from './Markdown'
+import { Recorder } from './recorder'
 
 const api = window.orbit
+const recorder = new Recorder()
 
 type ToolRow = { id: string; name: string; input: unknown; output?: string; isError?: boolean }
 type Assistant = { kind: 'assistant'; id: string; text: string; tools: ToolRow[]; error?: string; done: boolean; canPaste: boolean }
 type Entry =
   | { kind: 'user'; id: string; text: string; context: ContextItem[] }
   | Assistant
-  | { kind: 'notice'; id: string; level: 'info' | 'error'; text: string }
+  | { kind: 'notice'; id: string; level: 'info' | 'error'; text: string; action?: { label: string; command: string } }
+  | { kind: 'progress'; id: string; label: string; value: number; done?: boolean }
 
 export function App(): React.JSX.Element {
   const [context, setContext] = useState<ContextItem[]>([])
@@ -38,6 +42,7 @@ export function App(): React.JSX.Element {
   const [input, setInput] = useState('')
   const [listening, setListening] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -101,7 +106,29 @@ export function App(): React.JSX.Element {
           setApprovals((a) => [...a, ev.request])
           break
         case 'notice':
-          setEntries((all) => [...all, { kind: 'notice', id: crypto.randomUUID(), level: ev.level, text: ev.text }])
+          setEntries((all) => [
+            ...all,
+            { kind: 'notice', id: crypto.randomUUID(), level: ev.level, text: ev.text, action: ev.action }
+          ])
+          break
+        case 'progress':
+          setEntries((all) =>
+            all.some((e) => e.id === ev.id)
+              ? all.map((e) => (e.id === ev.id ? { ...ev, kind: 'progress' } : e))
+              : [...all, { ...ev, kind: 'progress' }]
+          )
+          break
+        case 'record':
+          awaitingTranscript.current = false
+          if (ev.value) {
+            recorder.start().catch((err: Error) => {
+              api.voiceEnded()
+              setEntries((all) => [
+                ...all,
+                { kind: 'notice', id: crypto.randomUUID(), level: 'error', text: `Microphone unavailable: ${err.message}` }
+              ])
+            })
+          } else void finishRecording(ev.discard === true)
           break
         case 'reset':
           setEntries([])
@@ -143,6 +170,29 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [entries, approvals])
+
+  /** Local engine: stop the mic, transcribe on-device, drop the text into the input. */
+  const finishRecording = async (discard: boolean): Promise<void> => {
+    const samples = await recorder.stop()
+    if (discard || samples.length === 0) return
+    setTranscribing(true)
+    try {
+      const text = await api.transcribe(samples)
+      if (!text) return
+      const next = state.current.input.trim() ? `${state.current.input.trimEnd()} ${text}` : text
+      setInput(next)
+      state.current.input = next
+      inputRef.current?.focus()
+      if (autoSubmitMs.current !== null) submitTimer.current = setTimeout(() => void submit(), autoSubmitMs.current)
+    } catch (err) {
+      setEntries((all) => [
+        ...all,
+        { kind: 'notice', id: crypto.randomUUID(), level: 'error', text: `Transcription failed: ${(err as Error).message}` }
+      ])
+    } finally {
+      setTranscribing(false)
+    }
+  }
 
   const onInputChange = (value: string): void => {
     setInput(value)
@@ -219,7 +269,7 @@ export function App(): React.JSX.Element {
                 listening ? 'listening bg-rose-500 text-white' : 'text-zinc-400 hover:bg-white/10 hover:text-zinc-100'
               }`}
             >
-              <Mic size={16} />
+              {transcribing ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}
             </button>
             <textarea
               ref={inputRef}
@@ -227,7 +277,15 @@ export function App(): React.JSX.Element {
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={listening ? 'Listening… press the hotkey again to stop' : hasThread ? 'Ask a follow-up…' : 'Ask anything…'}
+              placeholder={
+                listening
+                  ? 'Listening… press the hotkey again to stop'
+                  : transcribing
+                    ? 'Transcribing…'
+                    : hasThread
+                      ? 'Ask a follow-up…'
+                      : 'Ask anything…'
+              }
               className="max-h-40 flex-1 resize-none bg-transparent py-1 text-[15px] outline-none placeholder:text-zinc-500"
               style={{ fieldSizing: 'content' } as React.CSSProperties}
             />
@@ -303,10 +361,34 @@ const TOOL_ICONS: Record<string, LucideIcon> = { web_search: Globe, web_fetch: G
 function EntryView({ entry }: { entry: Entry }): React.JSX.Element {
   if (entry.kind === 'notice') {
     const error = entry.level === 'error'
+    const action = entry.action
     return (
-      <div className={`flex items-start gap-2 text-xs ${error ? 'text-rose-300' : 'text-emerald-300'}`}>
-        {error ? <TriangleAlert size={14} className="mt-px shrink-0" /> : <Check size={14} className="mt-px shrink-0" />}
-        {entry.text}
+      <div className={`flex items-center gap-2 text-xs ${error ? 'text-rose-300' : 'text-zinc-300'}`}>
+        {error ? <TriangleAlert size={14} className="shrink-0" /> : <Check size={14} className="shrink-0 text-emerald-400" />}
+        <span className="flex-1">{entry.text}</span>
+        {action && (
+          <ActionButton icon={Download} onClick={() => void window.orbit.submit(action.command, [])}>
+            {action.label}
+          </ActionButton>
+        )}
+      </div>
+    )
+  }
+  if (entry.kind === 'progress') {
+    return (
+      <div className="space-y-1.5 text-xs text-zinc-300">
+        <div className="flex justify-between">
+          <span className="flex items-center gap-2">
+            {entry.done ? <Check size={14} className="text-emerald-400" /> : <Loader2 size={14} className="animate-spin text-sky-300" />}
+            {entry.label}
+          </span>
+          {!entry.done && <span className="text-zinc-500 tabular-nums">{Math.round(entry.value * 100)}%</span>}
+        </div>
+        {!entry.done && (
+          <div className="h-1 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full rounded-full bg-sky-400 transition-[width]" style={{ width: `${entry.value * 100}%` }} />
+          </div>
+        )}
       </div>
     )
   }
