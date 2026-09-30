@@ -81,6 +81,18 @@ export const Settings = z.object({
     })
     .prefault({}),
 
+  speech: z
+    .object({
+      /** pocket: Kyutai Pocket TTS on this PC; windows: the built-in Windows voice. */
+      engine: z.enum(['off', 'pocket', 'windows']).default('off'),
+      /** voice: only answers to questions you asked by voice; always: every answer. */
+      when: z.enum(['voice', 'always']).default('voice'),
+      voice: z.string().default('alba'),
+      pocketCommand: z.string().default('uvx pocket-tts'),
+      port: z.number().int().default(8123)
+    })
+    .prefault({}),
+
   /** One-click actions shown in the bar when text is selected. */
   quickActions: z.array(QuickAction).default([
     { label: 'Explain', prompt: 'Explain this simply. If it is jargon-heavy, define the key terms.', output: 'popup' },

@@ -13,6 +13,7 @@ import { answerQuestion, setQuestionPresenter } from './core/questions'
 import { getConversation } from './core/history'
 import { setMemorySuggestionPresenter } from './core/tools/builtins/suggest'
 import { addMemory } from './core/memory'
+import { Speaker, stopSpeechServer, warmUpSpeech } from './voice/speech'
 import { bar, createBar, hideBar, resizeBar, sendToBar, setBarBlurHandler, showBar } from './windows/bar'
 import { bindHotkeys } from './os/hotkeys'
 import { createTray } from './os/tray'
@@ -43,6 +44,20 @@ if (!app.requestSingleInstanceLock()) app.quit()
 let prevWindow: Hwnd // window the user was in before Orbit took focus (for Replace)
 let prevApp = ''
 const voice = new VoiceController(sendToBar)
+const speaker = new Speaker(
+  (pcm, rate) => sendToBar({ type: 'audio', pcm, rate }),
+  () => {},
+  (message) => sendToBar({ type: 'notice', level: 'error', text: `Couldn't speak: ${message}` })
+)
+
+function speakMode(): 'off' | 'voice' | 'always' {
+  return settings.current.speech.engine === 'off' ? 'off' : settings.current.speech.when
+}
+
+function stopSpeaking(): void {
+  speaker.stop()
+  sendToBar({ type: 'audio-stop' })
+}
 const conversation = new Conversation(
   (turnId, event) => sendToBar({ type: 'agent', turnId, event }),
   (text, action) => sendToBar({ type: 'notice', level: 'info', text, action })
@@ -89,7 +104,8 @@ async function onBarHotkey(): Promise<void> {
   const w = bar()
   if (!w.isVisible()) {
     const context = await captureContext()
-    sendToBar({ type: 'open', context, autoSubmitMs: autoSubmitMs(), quickActions: settings.current.quickActions })
+    stopSpeaking()
+    sendToBar({ type: 'open', context, autoSubmitMs: autoSubmitMs(), speak: speakMode(), quickActions: settings.current.quickActions })
     showBar()
     attachBrowserUrl()
     if (settings.current.voice.startOnBarOpen) {
@@ -120,7 +136,7 @@ async function onScreenshot(): Promise<void> {
     console.error('[snip]', err)
     return undefined
   })
-  if (!wasVisible) sendToBar({ type: 'open', context, autoSubmitMs: autoSubmitMs(), quickActions: settings.current.quickActions })
+  if (!wasVisible) sendToBar({ type: 'open', context, autoSubmitMs: autoSubmitMs(), speak: speakMode(), quickActions: settings.current.quickActions })
   if (snip) {
     sendToBar({
       type: 'context-add',
@@ -131,6 +147,7 @@ async function onScreenshot(): Promise<void> {
 }
 
 function onPanic(): void {
+  stopSpeaking()
   conversation.cancel()
   tasks.cancelAll()
   workflows.cancelAll()
@@ -228,7 +245,14 @@ function registerIpc(): void {
     logInfo(`stt: ${(samples.length / 16000).toFixed(1)}s audio -> ${text.length} chars in ${Date.now() - t0} ms`)
     return text
   })
+  ipcMain.on('bar:speak', (_e, text: string) => speaker.say(text))
+  ipcMain.handle('dash:test-speech', () => {
+    stopSpeaking()
+    speaker.say("Hi, I'm Orbit. This is how I'll sound when I answer you.")
+  })
+  ipcMain.on('bar:speak-stop', () => stopSpeaking())
   ipcMain.on('bar:hide', () => {
+    stopSpeaking()
     void voice.cancel()
     hideBar()
   })
@@ -247,6 +271,7 @@ app.whenReady().then(() => {
   settings.load()
   settings.watch()
   settings.on('change', () => {
+    warmUpSpeech()
     if (!process.env.ORBIT_E2E) rebindHotkeys()
     applyStartWithWindows()
   })
@@ -279,6 +304,7 @@ app.whenReady().then(() => {
   })
   createBar()
   setBarBlurHandler(() => {
+    stopSpeaking()
     void voice.cancel()
     hideBar()
   })
@@ -294,7 +320,7 @@ app.whenReady().then(() => {
   })
   if (process.env.ORBIT_E2E) {
     // Test hook for scripts/e2e.ts; never set in normal runs.
-    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation,
+    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, speaker,
       callTool: (name: string, input: unknown) => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [] }) } })
     return
   }
@@ -303,6 +329,7 @@ app.whenReady().then(() => {
   rebindHotkeys()
   applyStartWithWindows()
   startAutoUpdates()
+  warmUpSpeech()
   scheduler.start()
   warmUp()
 })
@@ -313,5 +340,6 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   stopSelectionHook()
   stopBrowserUrlHelper()
+  stopSpeechServer()
   conversation.reset()
 })

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Download, FileCog, FolderOpen, FolderPlus, X } from 'lucide-react'
+import { Download, FileCog, FolderOpen, FolderPlus, Volume2, X } from 'lucide-react'
 import type { DashSettings } from '@shared/dash'
 import { Button, Card, dash, inputClass, PageHeader, selectClass } from '../ui'
 
@@ -69,6 +69,46 @@ export function SettingsPage(): React.JSX.Element {
             <span className="flex items-center gap-2 text-sm text-amber-300">
               <Download size={14} /> The speech model downloads the first time you talk (482 MB).
             </span>
+          )}
+        </div>
+      </Section>
+
+      <Section title="Spoken replies" hint="Orbit can read its answers out loud. Pocket TTS runs on your PC (it needs uv and the pocket-tts package); the Windows voice needs nothing but sounds robotic.">
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={s.speech.engine}
+            onChange={(e) => void dash.updateSettings({ speech: { engine: e.target.value as DashSettings['speech']['engine'] } })}
+            className={selectClass}
+            aria-label="Speech engine"
+          >
+            <option value="off">Off</option>
+            <option value="pocket">Pocket TTS (on this PC)</option>
+            <option value="windows">Windows voice</option>
+          </select>
+          {s.speech.engine !== 'off' && (
+            <>
+              <select
+                value={s.speech.when}
+                onChange={(e) => void dash.updateSettings({ speech: { when: e.target.value as DashSettings['speech']['when'] } })}
+                className={selectClass}
+                aria-label="When to speak"
+              >
+                <option value="voice">When I asked by voice</option>
+                <option value="always">Every answer</option>
+              </select>
+              {s.speech.engine === 'pocket' && (
+                <select value={s.speech.voice} onChange={(e) => void dash.updateSettings({ speech: { voice: e.target.value } })} className={selectClass} aria-label="Voice">
+                  {s.voices.map((v) => (
+                    <option key={v} value={v}>
+                      {v[0].toUpperCase() + v.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <Button icon={Volume2} onClick={() => void dash.testSpeech()}>
+                Hear it
+              </Button>
+            </>
           )}
         </div>
       </Section>

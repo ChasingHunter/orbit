@@ -49,6 +49,8 @@ export type DashSettings = {
   startWithWindows: boolean
   autoUpdate: boolean
   version: string
+  speech: { engine: 'off' | 'pocket' | 'windows'; when: 'voice' | 'always'; voice: string }
+  voices: string[]
 }
 
 export type WorkflowRunItem = {
@@ -131,7 +133,9 @@ export interface DashApi {
   tools(): Promise<{ name: string; description: string; sideEffect: boolean }[]>
   audit(limit?: number): Promise<AuditItem[]>
   settings(): Promise<DashSettings>
-  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[]; voiceMode?: DashSettings['voiceMode']; startWithWindows?: boolean; autoUpdate?: boolean }): Promise<void>
+  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[]; voiceMode?: DashSettings['voiceMode']; startWithWindows?: boolean; autoUpdate?: boolean; speech?: Partial<DashSettings['speech']> }): Promise<void>
+  /** Says a short sample with the current speech settings. */
+  testSpeech(): Promise<void>
   /** Throws if another app already owns the combination. */
   setHotkey(action: 'bar' | 'screenshot' | 'panic', accelerator: string): Promise<void>
   pickFolder(): Promise<string | null>

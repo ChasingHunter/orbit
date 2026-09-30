@@ -26,7 +26,7 @@ export type ApprovalRequest = {
 
 /** State pushed from main to the bar window. */
 export type BarEvent =
-  | { type: 'open'; context: ContextItem[]; autoSubmitMs: number | null; quickActions: { label: string; prompt: string; output: 'popup' | 'replace' | 'copy' }[] }
+  | { type: 'open'; context: ContextItem[]; autoSubmitMs: number | null; speak?: 'off' | 'voice' | 'always'; quickActions: { label: string; prompt: string; output: 'popup' | 'replace' | 'copy' }[] }
   | { type: 'context-add'; item: ContextItem }
   | { type: 'listening'; value: boolean }
   | { type: 'agent'; turnId: string; event: AgentEvent }
@@ -36,6 +36,8 @@ export type BarEvent =
   | { type: 'record'; value: boolean; discard?: boolean }
   | { type: 'progress'; id: string; label: string; value: number; done?: boolean }
   | { type: 'memory-suggestion'; id: string; text: string }
+  | { type: 'audio'; pcm: Uint8Array; rate: number }
+  | { type: 'audio-stop' }
   | { type: 'question'; question: { id: string; question: string; options: string[]; from: string } }
   /** Shows an earlier conversation so the user can carry on with it. */
   | { type: 'restore'; title: string; messages: { role: 'user' | 'assistant'; text: string }[] }
@@ -49,6 +51,8 @@ export interface OrbitApi {
   approve(id: string, approved: boolean): void
   answer(id: string, text: string): void
   saveMemory(text: string): Promise<void>
+  speak(text: string): void
+  stopSpeaking(): void
   toggleVoice(): void
   /** Local engine: 16 kHz mono samples -> text. */
   transcribe(samples: Float32Array): Promise<string>

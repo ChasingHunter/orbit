@@ -13,6 +13,7 @@ import { deleteConversation, getMessages, listConversations } from './core/histo
 import { tasks } from './core/tasks'
 import { isModelInstalled } from './voice/localStt'
 import { notifyDashboard } from './windows/dashboard'
+import { POCKET_VOICES } from './voice/speech'
 import { workflowStore } from './workflows/store'
 import { workflows } from './workflows/engine'
 import { TEMPLATES } from './workflows/templates'
@@ -30,6 +31,7 @@ type SettingsPatch = {
   voiceMode?: DashSettings['voiceMode']
   startWithWindows?: boolean
   autoUpdate?: boolean
+  speech?: Partial<DashSettings['speech']>
 }
 
 export function registerDashboardIpc(): void {
@@ -154,7 +156,9 @@ export function registerDashboardIpc(): void {
       startWithWindows: settings.current.ui.startWithWindows,
       autoUpdate: settings.current.ui.autoUpdate,
       // From package.json so dev runs don't report Electron's own version.
-      version
+      version,
+      speech: { engine: settings.current.speech.engine, when: settings.current.speech.when, voice: settings.current.speech.voice },
+      voices: POCKET_VOICES
     })
   )
   ipcMain.handle('dash:settings-update', (_e, patch: SettingsPatch) => {
@@ -165,6 +169,7 @@ export function registerDashboardIpc(): void {
       if (patch.voiceMode) d.voice.mode = patch.voiceMode
       if (patch.startWithWindows !== undefined) d.ui.startWithWindows = patch.startWithWindows
       if (patch.autoUpdate !== undefined) d.ui.autoUpdate = patch.autoUpdate
+      if (patch.speech) Object.assign(d.speech, patch.speech)
     })
   })
   ipcMain.handle('dash:pick-folder', async () => {

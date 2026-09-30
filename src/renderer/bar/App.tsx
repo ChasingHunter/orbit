@@ -18,6 +18,8 @@ import {
   ScanText,
   ShieldAlert,
   Square,
+  Volume2,
+  VolumeX,
   TextQuote,
   TriangleAlert,
   Wrench,
@@ -30,9 +32,13 @@ type QuickAction = Extract<BarEvent, { type: 'open' }>['quickActions'][number]
 type Question = Extract<BarEvent, { type: 'question' }>['question']
 import { Markdown } from './Markdown'
 import { Recorder } from './recorder'
+import { PcmPlayer, SentenceSplitter } from './player'
 
 const api = window.orbit
 const recorder = new Recorder()
+const player = new PcmPlayer()
+/** Whether spoken replies are on; answers show a Read aloud button when they are. */
+let speechOn = false
 
 type ToolRow = { id: string; name: string; input: unknown; output?: string; isError?: boolean }
 type Assistant = { kind: 'assistant'; id: string; text: string; tools: ToolRow[]; error?: string; done: boolean; canPaste: boolean; note?: string }
@@ -53,6 +59,12 @@ export function App(): React.JSX.Element {
   const [busy, setBusy] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
   const [quickActions, setQuickActions] = useState<QuickAction[]>([])
+  const [speaking, setSpeaking] = useState(false)
+  const speakMode = useRef<'off' | 'voice' | 'always'>('off')
+  /** The turn currently being read aloud as it streams, with its sentence splitter. */
+  const reading = useRef<{ turnId: string; splitter: SentenceSplitter } | null>(null)
+  /** Set when a question came from voice, so its answer is spoken. */
+  const spokenQuestion = useRef(false)
   /** Turns whose finished answer should be pasted over the selection or copied. */
   const pendingOutput = useRef(new Map<string, 'replace' | 'copy'>())
   const rootRef = useRef<HTMLDivElement>(null)
@@ -69,6 +81,7 @@ export function App(): React.JSX.Element {
   }, [])
 
   const newChat = (): void => {
+    api.stopSpeaking()
     api.newChat()
     setEntries([])
     setApprovals([])
@@ -88,8 +101,12 @@ export function App(): React.JSX.Element {
     const text = override?.text ?? typed
     if (!text.trim() || isBusy) return
     if (!override) setInput('')
+    api.stopSpeaking()
     const { turnId } = await api.submit(text, ctx)
     if (turnId && override && override.output !== 'popup') pendingOutput.current.set(turnId, override.output)
+    const readThis = speakMode.current === 'always' || (speakMode.current === 'voice' && spokenQuestion.current)
+    spokenQuestion.current = false
+    if (turnId && readThis && !override) reading.current = { turnId, splitter: new SentenceSplitter() }
     if (!turnId) return // handled locally (slash command)
     const canPaste = ctx.some((c) => c.kind === 'selection')
     setEntries((all) => [
@@ -105,6 +122,8 @@ export function App(): React.JSX.Element {
     return api.onEvent((ev: BarEvent) => {
       switch (ev.type) {
         case 'open':
+          speakMode.current = ev.speak ?? 'off'
+          speechOn = speakMode.current !== 'off'
           setContext(ev.context)
           setQuickActions(ev.quickActions ?? [])
           autoSubmitMs.current = ev.autoSubmitMs
@@ -122,6 +141,15 @@ export function App(): React.JSX.Element {
           break
         case 'question':
           setQuestions((q) => [...q, ev.question])
+          break
+        case 'audio':
+          player.push(ev.pcm, ev.rate)
+          setSpeaking(true)
+          break
+        case 'audio-stop':
+          player.stop()
+          reading.current = null
+          setSpeaking(false)
           break
         case 'memory-suggestion':
           setEntries((all) => [...all, { kind: 'suggestion', id: ev.id, text: ev.text, state: 'open' }])
@@ -169,7 +197,10 @@ export function App(): React.JSX.Element {
           break
         case 'agent': {
           const e = ev.event
-          if (e.type === 'text') updateAssistant(ev.turnId, (a) => ({ ...a, text: a.text + e.delta }))
+          if (e.type === 'text') {
+            updateAssistant(ev.turnId, (a) => ({ ...a, text: a.text + e.delta }))
+            if (reading.current?.turnId === ev.turnId) for (const s of reading.current.splitter.push(e.delta)) api.speak(s)
+          }
           else if (e.type === 'tool-call')
             updateAssistant(ev.turnId, (a) => ({ ...a, tools: [...a.tools, { id: e.id, name: e.name, input: e.input }] }))
           else if (e.type === 'tool-result')
@@ -180,6 +211,10 @@ export function App(): React.JSX.Element {
           else if (e.type === 'error' || e.type === 'rate-limit')
             updateAssistant(ev.turnId, (a) => ({ ...a, error: [a.error, e.message].filter(Boolean).join('\n') }))
           else if (e.type === 'done') {
+            if (reading.current?.turnId === ev.turnId) {
+              for (const s of reading.current.splitter.flush()) api.speak(s)
+              reading.current = null
+            }
             updateAssistant(ev.turnId, (a) => {
               // Quick actions set to replace or copy act on the finished answer by themselves.
               const mode = pendingOutput.current.get(ev.turnId)
@@ -197,6 +232,10 @@ export function App(): React.JSX.Element {
       }
     })
   }, [updateAssistant])
+
+  useEffect(() => {
+    player.onEnded = () => setSpeaking(false)
+  }, [])
 
   // Grow/shrink the window to fit content.
   useLayoutEffect(() => {
@@ -220,6 +259,7 @@ export function App(): React.JSX.Element {
       const text = await api.transcribe(samples)
       if (!text) return
       const next = state.current.input.trim() ? `${state.current.input.trimEnd()} ${text}` : text
+      spokenQuestion.current = true
       setInput(next)
       state.current.input = next
       inputRef.current?.focus()
@@ -238,6 +278,7 @@ export function App(): React.JSX.Element {
     setInput(value)
     // Dictation engines type/paste the transcript into the focused input.
     if (awaitingTranscript.current && value.trim()) {
+      spokenQuestion.current = true
       if (listening) api.voiceEnded()
       clearTimeout(submitTimer.current)
       if (autoSubmitMs.current !== null) submitTimer.current = setTimeout(() => void submit(), autoSubmitMs.current)
@@ -257,6 +298,7 @@ export function App(): React.JSX.Element {
       // Manual typing cancels a pending voice auto-submit.
       clearTimeout(submitTimer.current)
       awaitingTranscript.current = false
+      spokenQuestion.current = false
     }
   }
 
@@ -365,6 +407,7 @@ export function App(): React.JSX.Element {
               className="max-h-40 flex-1 resize-none bg-transparent py-1 text-[15px] outline-none placeholder:text-zinc-500"
               style={{ fieldSizing: 'content' } as React.CSSProperties}
             />
+            {speaking && <IconButton icon={VolumeX} label="Stop speaking" onClick={() => api.stopSpeaking()} />}
             <IconButton icon={ScanText} label="Screenshot & ask" onClick={() => api.requestScreenshot()} />
             {busy ? (
               <button
@@ -526,6 +569,11 @@ function EntryView({ entry }: { entry: Entry }): React.JSX.Element {
       {a.done && a.text && (
         <div className="flex gap-1.5">
           <CopyButton text={a.text} />
+          {speechOn && (
+            <ActionButton icon={Volume2} onClick={() => (window.orbit.stopSpeaking(), window.orbit.speak(a.text))}>
+              Read aloud
+            </ActionButton>
+          )}
           {a.canPaste && (
             <ActionButton icon={ClipboardPaste} onClick={() => void window.orbit.replaceSelection(a.text)}>
               Paste back

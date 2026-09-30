@@ -14,6 +14,8 @@ const api: OrbitApi = {
   approve: (id, approved) => ipcRenderer.send('bar:approve', id, approved),
   answer: (id, text) => ipcRenderer.send('bar:answer', id, text),
   saveMemory: (text) => ipcRenderer.invoke('bar:save-memory', text),
+  speak: (text) => ipcRenderer.send('bar:speak', text),
+  stopSpeaking: () => ipcRenderer.send('bar:speak-stop'),
   toggleVoice: () => ipcRenderer.send('bar:voice-toggle'),
   voiceEnded: () => ipcRenderer.send('bar:voice-ended'),
   transcribe: (samples) => ipcRenderer.invoke('stt:transcribe', samples),
@@ -71,6 +73,7 @@ const dash: DashApi = {
   settings: () => ipcRenderer.invoke('dash:settings'),
   updateSettings: (patch) => ipcRenderer.invoke('dash:settings-update', patch),
   pickFolder: () => ipcRenderer.invoke('dash:pick-folder'),
+  testSpeech: () => ipcRenderer.invoke('dash:test-speech'),
   setHotkey: (action, accel) => ipcRenderer.invoke('dash:set-hotkey', action, accel),
   openPath: (what) => ipcRenderer.invoke('dash:open', what)
 }
