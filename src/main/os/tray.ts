@@ -21,7 +21,12 @@ function icon(): Electron.NativeImage {
   return nativeImage.createFromBitmap(buf, { width: size, height: size })
 }
 
-export function createTray(actions: { openBar: () => void; screenshot: () => void; quit: () => void }): void {
+export function createTray(actions: {
+  openBar: () => void
+  screenshot: () => void
+  dashboard: () => void
+  quit: () => void
+}): void {
   tray = new Tray(icon())
   tray.setToolTip('Orbit')
   tray.on('click', actions.openBar)
@@ -29,6 +34,7 @@ export function createTray(actions: { openBar: () => void; screenshot: () => voi
     Menu.buildFromTemplate([
       { label: 'Ask Orbit', click: actions.openBar },
       { label: 'Screenshot && ask', click: actions.screenshot },
+      { label: 'Open dashboard', click: actions.dashboard },
       { type: 'separator' },
       { label: 'Edit settings.json', click: () => void shell.openPath(paths.settings) },
       { label: 'Open data folder', click: () => void shell.openPath(dataDir) },

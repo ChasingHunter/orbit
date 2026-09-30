@@ -25,6 +25,15 @@ class SettingsStore extends EventEmitter {
     writeFileSync(paths.settings, JSON.stringify(this.current, null, 2))
   }
 
+  /** Applies a validated change, saves it, and notifies listeners. */
+  update(mutate: (draft: Settings) => void): void {
+    const draft = structuredClone(this.current)
+    mutate(draft)
+    this.current = Settings.parse(draft)
+    this.save()
+    this.emit('change', this.current)
+  }
+
   /** Hot-reload when the user hand-edits settings.json. */
   watch(): void {
     let timer: NodeJS.Timeout | undefined

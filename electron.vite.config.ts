@@ -27,7 +27,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           bar: resolve('src/renderer/bar/index.html'),
-          snip: resolve('src/renderer/snip/index.html')
+          snip: resolve('src/renderer/snip/index.html'),
+          dashboard: resolve('src/renderer/dashboard/index.html')
         }
       }
     }

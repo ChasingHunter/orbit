@@ -8,6 +8,7 @@ import {
   Copy,
   Download,
   Globe,
+  LayoutDashboard,
   Loader2,
   Mic,
   Plus,
@@ -234,6 +235,7 @@ export function App(): React.JSX.Element {
           <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-1.5">
             <span className="text-[11px] font-medium tracking-wide text-zinc-500">ORBIT</span>
             <div className="flex items-center gap-0.5">
+              <IconButton icon={LayoutDashboard} label="Dashboard" onClick={() => api.openDashboard()} />
               <IconButton icon={Plus} label="New chat (Ctrl+N)" onClick={newChat} />
               <IconButton icon={X} label="Close (Esc)" onClick={close} />
             </div>

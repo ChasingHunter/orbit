@@ -1,6 +1,7 @@
 import { app, clipboard, globalShortcut, ipcMain, Notification } from 'electron'
 import { randomUUID } from 'node:crypto'
 import type { ContextItem } from '@shared/types'
+import type { DashPage } from '@shared/dash'
 import { join } from 'node:path'
 import { dataDir, ensureDataDirs } from './paths'
 import { installLogging, logInfo } from './log'
@@ -17,6 +18,8 @@ import { VoiceController } from './voice/controller'
 import { transcribe, warmUp } from './voice/localStt'
 import { integrations } from './integrations/manager'
 import { tasks } from './core/tasks'
+import { registerDashboardIpc } from './dashboardIpc'
+import { openDashboard } from './windows/dashboard'
 import { pasteInto } from './os/writeback'
 import { foregroundWindow, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
 
@@ -150,6 +153,10 @@ function registerIpc(): void {
   ipcMain.handle('bar:replace', (_e, text: string) => pasteInto(prevWindow, text, hideBar))
   ipcMain.on('bar:screenshot', () => void onScreenshot())
   ipcMain.on('bar:resize', (_e, h: number) => resizeBar(h))
+  ipcMain.on('bar:dashboard', (_e, page?: DashPage) => {
+    hideBar()
+    openDashboard(page)
+  })
 }
 
 app.whenReady().then(() => {
@@ -159,6 +166,7 @@ app.whenReady().then(() => {
   settings.on('change', rebindHotkeys)
 
   registerIpc()
+  registerDashboardIpc()
   void integrations.startAll()
   tasks.markInterrupted()
   setApprovalPresenter((request) => {
@@ -170,10 +178,15 @@ app.whenReady().then(() => {
     void voice.cancel()
     hideBar()
   })
-  createTray({ openBar: () => void onBarHotkey(), screenshot: () => void onScreenshot(), quit: () => app.quit() })
+  createTray({
+    openBar: () => void onBarHotkey(),
+    screenshot: () => void onScreenshot(),
+    dashboard: () => openDashboard(),
+    quit: () => app.quit()
+  })
   if (process.env.ORBIT_E2E) {
     // Test hook for scripts/e2e.ts; never set in normal runs.
-    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks } })
+    Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard } })
     return
   }
   startSelectionHook()
