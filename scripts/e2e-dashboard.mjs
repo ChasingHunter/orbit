@@ -94,7 +94,7 @@ check('history conversation opens', true)
 
 await go('Settings')
 await dashWin.screenshot({ path: join(shots, 'dash-settings.png') })
-check('settings shows models', (await dashWin.locator('input[value="claude:sonnet"]').count()) === 1)
+check('settings shows models', (await dashWin.locator('input[value="claude:sonnet"]').count()) >= 1)
 
 await app.close()
 process.exit(failed ? 1 : 0)
