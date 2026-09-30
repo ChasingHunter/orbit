@@ -4,6 +4,7 @@ export type ContextItem =
   | { kind: 'selection'; id: string; text: string; app: string }
   | { kind: 'screenshot'; id: string; mediaType: 'image/png'; base64: string; width: number; height: number }
   | { kind: 'window'; id: string; app: string; title: string }
+  | { kind: 'url'; id: string; url: string }
 
 export type ImageInput = { mediaType: 'image/png' | 'image/jpeg'; base64: string }
 
@@ -25,7 +26,7 @@ export type ApprovalRequest = {
 
 /** State pushed from main to the bar window. */
 export type BarEvent =
-  | { type: 'open'; context: ContextItem[]; autoSubmitMs: number | null }
+  | { type: 'open'; context: ContextItem[]; autoSubmitMs: number | null; quickActions: { label: string; prompt: string; output: 'popup' | 'replace' | 'copy' }[] }
   | { type: 'context-add'; item: ContextItem }
   | { type: 'listening'; value: boolean }
   | { type: 'agent'; turnId: string; event: AgentEvent }

@@ -25,6 +25,7 @@ export const getContext = defineTool({
       .map((c) => {
         if (c.kind === 'selection') return `Selected text in ${c.app}:\n${c.text}`
         if (c.kind === 'window') return `Active window: ${c.app}, titled "${c.title}"`
+        if (c.kind === 'url') return `Open browser tab: ${c.url}`
         return `Screenshot attached (${c.width}x${c.height}); already visible to you as an image.`
       })
       .join('\n\n')

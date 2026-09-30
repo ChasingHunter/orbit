@@ -22,6 +22,8 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import type { ApprovalRequest, BarEvent, ContextItem } from '@shared/types'
+
+type QuickAction = Extract<BarEvent, { type: 'open' }>['quickActions'][number]
 import { Markdown } from './Markdown'
 import { Recorder } from './recorder'
 
@@ -29,7 +31,7 @@ const api = window.orbit
 const recorder = new Recorder()
 
 type ToolRow = { id: string; name: string; input: unknown; output?: string; isError?: boolean }
-type Assistant = { kind: 'assistant'; id: string; text: string; tools: ToolRow[]; error?: string; done: boolean; canPaste: boolean }
+type Assistant = { kind: 'assistant'; id: string; text: string; tools: ToolRow[]; error?: string; done: boolean; canPaste: boolean; note?: string }
 type Entry =
   | { kind: 'user'; id: string; text: string; context: ContextItem[] }
   | Assistant
@@ -44,6 +46,9 @@ export function App(): React.JSX.Element {
   const [listening, setListening] = useState(false)
   const [busy, setBusy] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
+  const [quickActions, setQuickActions] = useState<QuickAction[]>([])
+  /** Turns whose finished answer should be pasted over the selection or copied. */
+  const pendingOutput = useRef(new Map<string, 'replace' | 'copy'>())
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -70,13 +75,15 @@ export function App(): React.JSX.Element {
     api.hide()
   }
 
-  const submit = useCallback(async () => {
+  const submit = useCallback(async (override?: { text: string; output: QuickAction['output'] }) => {
     clearTimeout(submitTimer.current)
     awaitingTranscript.current = false
-    const { input: text, context: ctx, busy: isBusy } = state.current
+    const { input: typed, context: ctx, busy: isBusy } = state.current
+    const text = override?.text ?? typed
     if (!text.trim() || isBusy) return
-    setInput('')
+    if (!override) setInput('')
     const { turnId } = await api.submit(text, ctx)
+    if (turnId && override && override.output !== 'popup') pendingOutput.current.set(turnId, override.output)
     if (!turnId) return // handled locally (slash command)
     const canPaste = ctx.some((c) => c.kind === 'selection')
     setEntries((all) => [
@@ -93,6 +100,7 @@ export function App(): React.JSX.Element {
       switch (ev.type) {
         case 'open':
           setContext(ev.context)
+          setQuickActions(ev.quickActions ?? [])
           autoSubmitMs.current = ev.autoSubmitMs
           setTimeout(() => inputRef.current?.focus(), 0)
           break
@@ -150,7 +158,16 @@ export function App(): React.JSX.Element {
           else if (e.type === 'error' || e.type === 'rate-limit')
             updateAssistant(ev.turnId, (a) => ({ ...a, error: [a.error, e.message].filter(Boolean).join('\n') }))
           else if (e.type === 'done') {
-            updateAssistant(ev.turnId, (a) => ({ ...a, done: true }))
+            updateAssistant(ev.turnId, (a) => {
+              // Quick actions set to replace or copy act on the finished answer by themselves.
+              const mode = pendingOutput.current.get(ev.turnId)
+              pendingOutput.current.delete(ev.turnId)
+              if (mode && a.text.trim() && !a.error) {
+                if (mode === 'replace') void api.replaceSelection(a.text.trim())
+                else api.copy(a.text.trim())
+              }
+              return { ...a, done: true, note: mode === 'copy' && a.text.trim() ? 'Copied to your clipboard' : undefined }
+            })
             setBusy(false)
           }
           break
@@ -261,6 +278,20 @@ export function App(): React.JSX.Element {
               ))}
             </div>
           )}
+          {!busy && context.some((c) => c.kind === 'selection') && quickActions.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-3 pt-2" data-testid="quick-actions">
+              {quickActions.map((q) => (
+                <button
+                  key={q.label}
+                  onClick={() => void submit({ text: q.prompt, output: q.output })}
+                  title={q.output === 'replace' ? 'Replaces your selection' : q.output === 'copy' ? 'Copies the result' : undefined}
+                  className="rounded-full border border-sky-400/20 bg-sky-400/[0.06] px-2.5 py-1 text-xs text-sky-200 transition-colors hover:border-sky-400/50 hover:bg-sky-400/[0.12]"
+                >
+                  {q.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-center gap-1.5 px-2.5 py-2">
             <button
@@ -337,7 +368,10 @@ function IconButton(props: { icon: LucideIcon; label: string; onClick: () => voi
 function Chip({ item, onRemove }: { item: ContextItem; onRemove: () => void }): React.JSX.Element {
   let icon: React.ReactNode
   let label: string
-  if (item.kind === 'window') {
+  if (item.kind === 'url') {
+    icon = <Globe size={13} className="shrink-0 text-emerald-300" />
+    label = item.url.replace(/^https?:\/\/(www\.)?/, '')
+  } else if (item.kind === 'window') {
     icon = <AppWindow size={13} className="shrink-0 text-sky-300" />
     label = `${item.app.replace(/\.exe$/i, '')} · ${item.title}`
   } else if (item.kind === 'selection') {
@@ -444,6 +478,7 @@ function EntryView({ entry }: { entry: Entry }): React.JSX.Element {
           {a.error}
         </div>
       )}
+      {a.note && <div className="flex items-center gap-1.5 text-xs text-emerald-300"><Check size={13} />{a.note}</div>}
       {a.done && a.text && (
         <div className="flex gap-1.5">
           <CopyButton text={a.text} />

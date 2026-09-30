@@ -19,6 +19,14 @@ export const ProviderConfig = z.discriminatedUnion('type', [
 ])
 export type ProviderConfig = z.infer<typeof ProviderConfig>
 
+export const QuickAction = z.object({
+  label: z.string(),
+  prompt: z.string(),
+  /** popup: show the answer; replace: paste it over your selection; copy: put it on the clipboard. */
+  output: z.enum(['popup', 'replace', 'copy']).default('popup')
+})
+export type QuickAction = z.infer<typeof QuickAction>
+
 export const Settings = z.object({
   hotkeys: z
     .object({
@@ -68,6 +76,15 @@ export const Settings = z.object({
         .prefault({})
     })
     .prefault({}),
+
+  /** One-click actions shown in the bar when text is selected. */
+  quickActions: z.array(QuickAction).default([
+    { label: 'Explain', prompt: 'Explain this simply. If it is jargon-heavy, define the key terms.', output: 'popup' },
+    { label: 'Summarise', prompt: 'Summarise this in 3 short bullets.', output: 'popup' },
+    { label: 'Fix grammar', prompt: 'Fix spelling and grammar. Keep my wording, tone and formatting. Reply with only the corrected text.', output: 'replace' },
+    { label: 'Translate to English', prompt: 'Translate this to natural English. Reply with only the translation.', output: 'popup' },
+    { label: 'Reply', prompt: 'Draft a short, friendly reply to this message in my voice. Reply with only the draft.', output: 'copy' }
+  ]),
 
   files: z
     .object({

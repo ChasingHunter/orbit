@@ -22,6 +22,7 @@ import { scheduler } from './core/scheduler'
 import { workflows } from './workflows/engine'
 import { triggers } from './workflows/triggers'
 import { callTool } from './core/tools/registry'
+import { browserUrl, startBrowserUrlHelper, stopBrowserUrlHelper } from './os/browserUrl'
 import { registerDashboardIpc } from './dashboardIpc'
 import { openDashboard } from './windows/dashboard'
 import { pasteInto } from './os/writeback'
@@ -35,6 +36,7 @@ app.setPath('userData', join(dataDir, 'chromium'))
 if (!app.requestSingleInstanceLock()) app.quit()
 
 let prevWindow: Hwnd // window the user was in before Orbit took focus (for Replace)
+let prevApp = ''
 const voice = new VoiceController(sendToBar)
 const conversation = new Conversation((turnId, event) => sendToBar({ type: 'agent', turnId, event }))
 
@@ -49,6 +51,7 @@ async function captureContext(): Promise<ContextItem[]> {
   const info = windowInfo(hwnd)
   if (info.app.toLowerCase() === 'electron.exe' || info.app.toLowerCase() === 'orbit.exe') return []
   prevWindow = hwnd
+  prevApp = info.app
   const items: ContextItem[] = []
   if (info.app) items.push({ kind: 'window', id: randomUUID(), app: info.app, title: info.title })
   // Selection fallback may simulate Ctrl+C; wait until the hotkey's modifiers are up.
@@ -63,13 +66,22 @@ async function onBarHotkey(): Promise<void> {
   const w = bar()
   if (!w.isVisible()) {
     const context = await captureContext()
-    sendToBar({ type: 'open', context, autoSubmitMs: autoSubmitMs() })
+    sendToBar({ type: 'open', context, autoSubmitMs: autoSubmitMs(), quickActions: settings.current.quickActions })
     showBar()
+    attachBrowserUrl()
     if (settings.current.voice.startOnBarOpen) await voice.start()
     return
   }
   w.focus()
   await voice.toggle()
+}
+
+/** Adds the active tab's URL as a chip once it's known, without holding up the bar. */
+function attachBrowserUrl(): void {
+  if (!prevWindow || !prevApp) return
+  void browserUrl(prevWindow, prevApp).then((url) => {
+    if (url) sendToBar({ type: 'context-add', item: { kind: 'url', id: randomUUID(), url } })
+  })
 }
 
 async function onScreenshot(): Promise<void> {
@@ -81,7 +93,7 @@ async function onScreenshot(): Promise<void> {
     console.error('[snip]', err)
     return undefined
   })
-  if (!wasVisible) sendToBar({ type: 'open', context, autoSubmitMs: autoSubmitMs() })
+  if (!wasVisible) sendToBar({ type: 'open', context, autoSubmitMs: autoSubmitMs(), quickActions: settings.current.quickActions })
   if (snip) {
     sendToBar({
       type: 'context-add',
@@ -220,6 +232,7 @@ app.whenReady().then(() => {
     return
   }
   startSelectionHook()
+  startBrowserUrlHelper()
   rebindHotkeys()
   scheduler.start()
   warmUp()
@@ -230,5 +243,6 @@ app.on('window-all-closed', () => {})
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   stopSelectionHook()
+  stopBrowserUrlHelper()
   conversation.reset()
 })
