@@ -114,6 +114,11 @@ export interface DashApi {
   deleteWorkflow(name: string): Promise<void>
   editWorkflow(name: string): Promise<void>
   addTemplate(id: string): Promise<void>
+  /** The workflow as plain data (parsed YAML) for the visual editor. */
+  workflowGet(name: string): Promise<Record<string, unknown>>
+  /** Validates and saves; returns the saved name. Throws with the problems if invalid. */
+  workflowSave(previousName: string | null, data: unknown): Promise<string>
+  tools(): Promise<{ name: string; description: string; sideEffect: boolean }[]>
   settings(): Promise<DashSettings>
   updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine'] }): Promise<void>
   openPath(what: 'settings' | 'data' | 'files' | 'integrations'): Promise<void>

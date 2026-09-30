@@ -6,6 +6,7 @@ import {
   Clock,
   FileCode,
   Loader2,
+  PenLine,
   Play,
   Plus,
   Square,
@@ -17,11 +18,22 @@ import {
 import type { TemplateInfo, WorkflowInfo, WorkflowRunItem, WorkflowStepItem } from '@shared/dash'
 import { Markdown } from '../../bar/Markdown'
 import { Button, Card, dash, Empty, PageHeader, timeAgo } from '../ui'
+import { FlowEditor } from '../flow/FlowEditor'
+
+/** The editor covers the page area (not the sidebar) so the canvas gets the full width. */
+function EditorOverlay(props: { name: string | null; onDone: (saved?: string) => void }): React.JSX.Element {
+  return (
+    <div className="fixed inset-y-0 right-0 left-56 z-20 bg-[#0f0f11] px-6 pt-5">
+      <FlowEditor name={props.name} onSaved={(n) => props.onDone(n)} onCancel={() => props.onDone()} />
+    </div>
+  )
+}
 
 export function WorkflowsPage(): React.JSX.Element {
   const [items, setItems] = useState<WorkflowInfo[]>([])
   const [templates, setTemplates] = useState<TemplateInfo[]>([])
   const [open, setOpen] = useState<string | null>(null)
+  const [editing, setEditing] = useState<{ name: string | null } | null>(null)
   const load = useCallback(() => {
     void dash.workflows().then((r) => {
       setItems(r.workflows)
@@ -34,8 +46,20 @@ export function WorkflowsPage(): React.JSX.Element {
     return dash.onChanged((w) => w === 'workflows' && load())
   }, [load])
 
+  if (editing) {
+    return (
+      <EditorOverlay
+        name={editing.name}
+        onDone={(saved) => {
+          setEditing(null)
+          if (saved) setOpen(saved)
+          load()
+        }}
+      />
+    )
+  }
   const current = items.find((w) => w.name === open)
-  if (current) return <WorkflowDetail wf={current} onBack={() => setOpen(null)} />
+  if (current) return <WorkflowDetail wf={current} onBack={() => setOpen(null)} onEdit={() => setEditing({ name: current.name })} />
 
   const available = templates.filter((t) => !t.installed)
 
@@ -43,7 +67,12 @@ export function WorkflowsPage(): React.JSX.Element {
     <>
       <PageHeader
         title="Workflows"
-        subtitle={'Things Orbit does on a schedule or when you ask. To make one, describe it in the bar, like "every Friday at 5, summarise my week into a note".'}
+        subtitle={'Things Orbit does on a schedule or when you ask. Describe one in the bar, like "every Friday at 5, summarise my week into a note", or build it here.'}
+        actions={
+          <Button variant="primary" icon={Plus} onClick={() => setEditing({ name: null })}>
+            New workflow
+          </Button>
+        }
       />
       {items.length === 0 ? (
         <Empty icon={WorkflowIcon} title="No workflows yet">
@@ -129,7 +158,7 @@ function RunBadge({ run }: { run: WorkflowRunItem }): React.JSX.Element {
   )
 }
 
-function WorkflowDetail({ wf, onBack }: { wf: WorkflowInfo; onBack: () => void }): React.JSX.Element {
+function WorkflowDetail({ wf, onBack, onEdit }: { wf: WorkflowInfo; onBack: () => void; onEdit: () => void }): React.JSX.Element {
   const [runs, setRuns] = useState<WorkflowRunItem[]>([])
   const [openRun, setOpenRun] = useState<string | null>(null)
   const load = useCallback(() => void dash.workflowRuns(wf.name).then(setRuns), [wf.name])
@@ -157,6 +186,9 @@ function WorkflowDetail({ wf, onBack }: { wf: WorkflowInfo; onBack: () => void }
           <>
             <Button icon={FileCode} onClick={() => void dash.editWorkflow(wf.name)}>
               Edit YAML
+            </Button>
+            <Button icon={PenLine} onClick={onEdit}>
+              Edit visually
             </Button>
             <Button variant="primary" icon={Play} onClick={() => void dash.runWorkflow(wf.name)} disabled={runs[0]?.status === 'running'}>
               Run now

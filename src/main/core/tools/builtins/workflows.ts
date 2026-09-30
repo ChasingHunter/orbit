@@ -4,25 +4,7 @@ import { nextRunFor, scheduler } from '../../scheduler'
 import { explain, parseWorkflow, workflowStore } from '../../../workflows/store'
 import { workflows } from '../../../workflows/engine'
 import { defineTool } from '../types'
-import { allTools } from '../registry'
-import type { Step, Workflow } from '../../../workflows/schema'
-
-/** Every tool name a workflow refers to, including nested steps, agent tool lists and poll triggers. */
-function toolNames(wf: Workflow): string[] {
-  const names: string[] = [...wf.tools]
-  if ('poll' in wf.trigger) names.push(wf.trigger.poll.tool)
-  const walk = (steps: Step[]): void => {
-    for (const s of steps) {
-      if ('tool' in s) names.push(s.tool)
-      if ('agent' in s) names.push(...s.tools)
-      if ('if' in s) walk([...s.then, ...s.else])
-      if ('foreach' in s) walk(s.steps)
-      if ('parallel' in s) walk(s.parallel)
-    }
-  }
-  walk(wf.steps)
-  return names
-}
+import { unknownTools } from '../../../workflows/validate'
 
 const SPEC = `YAML format:
 name: lowercase-with-dashes
@@ -88,10 +70,9 @@ export const createWorkflow = defineTool({
     try {
       const wf = parseWorkflow(yaml)
       name = wf.name
-      const known = new Set(allTools().map((t) => t.name))
-      const unknown = [...new Set(toolNames(wf))].filter((n) => !known.has(n))
+      const unknown = unknownTools(wf)
       if (unknown.length) {
-        throw new Error(`unknown tool${unknown.length > 1 ? 's' : ''} ${unknown.join(', ')}. Available: ${[...known].join(', ')}`)
+        throw new Error(`unknown tool${unknown.length > 1 ? 's' : ''} ${unknown.join(', ')}. Use exact names from your tool list`)
       }
       if ('cron' in wf.trigger) nextRunFor({ cron: wf.trigger.cron })
     } catch (err) {

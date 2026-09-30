@@ -18,6 +18,8 @@ import { describeTrigger } from './workflows/describe'
 import { triggers } from './workflows/triggers'
 import { scheduler } from './core/scheduler'
 import type { WorkflowInfo } from '@shared/dash'
+import { toValidYaml } from './workflows/validate'
+import { allTools } from './core/tools/registry'
 
 type SettingsPatch = { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine'] }
 
@@ -95,6 +97,17 @@ export function registerDashboardIpc(): void {
   ipcMain.handle('dash:workflow-enabled', (_e, name: string, enabled: boolean) => workflowStore.setEnabled(name, enabled))
   ipcMain.handle('dash:workflow-delete', (_e, name: string) => workflowStore.remove(name))
   ipcMain.handle('dash:workflow-edit', (_e, name: string) => shell.openPath(workflowStore.fileOf(name)))
+  ipcMain.handle('dash:workflow-get', (_e, name: string) => workflowStore.rawOf(name))
+  ipcMain.handle('dash:workflow-save', (_e, previousName: string | null, data: unknown) => {
+    const { yaml, workflow } = toValidYaml(data)
+    if (!previousName && workflowStore.get(workflow.name)) throw new Error(`A workflow named "${workflow.name}" already exists`)
+    workflowStore.save(yaml)
+    if (previousName && previousName !== workflow.name) workflowStore.remove(previousName)
+    return workflow.name
+  })
+  ipcMain.handle('dash:tools', () =>
+    allTools().map((t) => ({ name: t.name, description: t.description.slice(0, 200), sideEffect: t.sideEffect }))
+  )
   ipcMain.handle('dash:template-add', (_e, id: string) => {
     const t = TEMPLATES.find((x) => x.id === id)
     if (!t) throw new Error(`Unknown template ${id}`)

@@ -49,6 +49,11 @@ class WorkflowStore extends EventEmitter {
     return join(workflowsDir, `${name}.yaml`)
   }
 
+  /** The workflow as plain data, for the visual editor. */
+  rawOf(name: string): unknown {
+    return YAML.parse(readFileSync(this.fileOf(name), 'utf8'))
+  }
+
   /** Validates and writes a workflow; returns the parsed result. */
   save(yamlText: string): Workflow {
     const wf = parseWorkflow(yamlText)
