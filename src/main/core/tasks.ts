@@ -39,7 +39,7 @@ export async function runAgent(
   const limit = settings.current.budget.backgroundDailyTokens
   if ((opts.source ?? 'task') !== 'chat' && limit > 0 && backgroundTokensToday() >= limit) {
     budgetNotice(limit)
-    throw new Error(`Today's background budget (${limit.toLocaleString()} tokens) is used up. It resets at midnight, or raise it in Settings.`)
+    throw new Error(`Today's background budget (${limit.toLocaleString()} tokens) is used up. It resets at midnight, or raise it on the Usage page.`)
   }
   // A purpose (quick/chat/research) maps to settings; anything else is a provider:model ref.
   const ref = purpose in settings.current.models ? settings.current.models[purpose as Purpose] : purpose

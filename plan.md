@@ -4,6 +4,11 @@ This is the working plan I build from. It's written as notes, so expect shorthan
 
 > **Handoff for new Claude session:** Plan is approved in direction; start building. Order: Step 0 Wispr injection spike → Day 1/2/3 roadmap below. Locked decisions: Windows-only MVP · Electron + TypeScript · build from scratch composing MIT libs (no fork) · provider-agnostic core, Claude subscription via Agent SDK as one runner with built-ins disabled · Orbit owns hotkeys (all configurable) and triggers Wispr Flow · local SQLite memory (+ optional Notion mirror) · YAML workflows + local scheduler · approvals for all side-effect tools. User prefs: low maintenance, configurable everything, honest limits, terse communication. Before coding Agent SDK parts, load the `claude-api` skill and verify API signatures.
 
+## Status (v0.7, Sept 2026)
+Done: Day 1, 2, 3 and most of Phase 2. Bar + context capture, voice (Parakeet local + Wispr), runners (Claude subscription, API key, Ollama, offline fallback), MCP integrations (Notion, Slack, Gmail/Calendar), memory, background agents, workflows (triggers, if/foreach/parallel/code in QuickJS, visual editor), spoken replies (Pocket TTS / Windows voice), NSIS + auto-update.
+Added since the plan: autonomy levels (strict / careful / trusted / full) over risk classes (read / local / external / destructive) + per-tool overrides + "allow for this chat"; undo journal for everything in Orbit's own space; token usage page + daily background budget; Setup page (dependency checks, Claude sign-in, bundled vs installed Claude Code).
+Not yet: headless server mode, phone bridge, macOS, code signing.
+
 ## Context
 Always-on personal AI assistant, Windows-first, open source, low maintenance:
 - **Ask anything, anywhere:** hotkey/voice → text, selection, or screenshot as context (Gemini/Copilot-style everywhere: PDFs, browser, any app).
@@ -198,7 +203,7 @@ Data: %APPDATA%\Orbit\ (db, secrets, mcp.json, workflows/, memory/, persona.md, 
 ```
 
 ## Safety
-Approval required for send/post/delete/pay/exec tools (per-tool policy: ask / always / never; workflows can pre-approve specific steps). Selected/web/Slack text marked untrusted (prompt-injection). Audit log of every tool call. Panic hotkey cancels all tasks. Secrets via DPAPI (`safeStorage`).
+Every tool has a risk class; the autonomy level picks ask/run per class, per-tool policy (ask / always / never) overrides it, workflows can pre-approve steps (ignored at strict). Orbit-owned changes are journaled and undoable; user folders are read-only. Selected/web/Slack text marked untrusted (prompt-injection). Audit log of every tool call. Panic hotkey cancels all tasks. Secrets via DPAPI (`safeStorage`).
 
 ## Tech stack
 Electron + electron-vite + TS · React/Tailwind/shadcn · `@anthropic-ai/claude-agent-sdk` · Vercel AI SDK (`ai`, provider pkgs, `@ai-sdk/mcp`) · `@modelcontextprotocol/sdk` · `selection-hook` · `uiohook-napi` · `better-sqlite3` (+ FTS5, `sqlite-vec`) · `croner` · `zod` + `yaml` · electron-builder NSIS + electron-updater · GitHub Actions + Renovate. Phase 2: `sherpa-onnx-node`, React Flow.

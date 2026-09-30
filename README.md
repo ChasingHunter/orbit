@@ -4,13 +4,34 @@ Orbit is a small assistant that sits in your Windows tray. Press a hotkey, say o
 
 I wanted something like the Gemini or Copilot sidebar, but for every app on my PC, open source, and not tied to one AI company. You can point it at your Claude subscription, an API key, or a model running locally in Ollama, and everything else works the same.
 
-It's early (version 0.6). It can remember things about you, work in the background, use Notion, Slack, Gmail and Google Calendar, set reminders, and run n8n-style workflows that you build by asking or on a canvas. The full roadmap is in [plan.md](plan.md).
+It's early (version 0.7). It can remember things about you, work in the background, use Notion, Slack, Gmail and Google Calendar, set reminders, and run n8n-style workflows that you build by asking or on a canvas. The full roadmap is in [plan.md](plan.md).
 
 ## Install
 
 Grab `Orbit-Setup-x.y.z.exe` from [Releases](../../releases) and run it. It isn't code-signed yet, so Windows will show a blue "Windows protected your PC" screen. Click "More info", then "Run anyway".
 
 After that Orbit starts with Windows and keeps itself up to date (both can be switched off in Settings). It lives in the tray. Click the icon to open the bar, or right-click it for the dashboard, where you connect services, look through your memory and history, and see background jobs.
+
+The first time it starts, the dashboard opens on the Setup page and asks you to sign in to Claude. That's the only step you need.
+
+### What it needs
+
+It runs on any Windows 10 or 11 PC (64-bit). The installer carries everything the core needs: its own copy of Claude Code, the speech-to-text engine, the sandbox workflow code runs in, and the rest. You don't need Node, Python or anything else to get going.
+
+The rest is optional, and only matters for the feature next to it:
+
+| Thing | What it's for | Where it comes from |
+|---|---|---|
+| Claude sign-in | Claude models on your subscription | One click on the Setup page |
+| Speech model (Parakeet, about 480 MB) | Talking to Orbit, all on your PC | Download button on the Setup page, or `/install-voice` |
+| Brave or Tavily key | Web search | Free tier, paste it on the Setup page |
+| [uv](https://docs.astral.sh/uv/) | Pocket TTS voice replies, Gmail and Calendar | Install it yourself |
+| [Node.js](https://nodejs.org/) | Slack and other `npx` integrations | Install it yourself |
+| [Ollama](https://ollama.com/) | Offline answers, private memories, the fallback when you hit your Claude limit | Install it yourself |
+
+The Setup page checks all of these and tells you what's there, what's missing, and what's fine to skip.
+
+Orbit tries not to install a second copy of things you already have. If you already use Claude Code, you can switch Settings over to your own install so only one copy runs (the bundled one stays pinned to the version Orbit was tested with, which is why it's the default). uv, Ollama and Pocket TTS all use their normal caches, so models you've already downloaded aren't downloaded again.
 
 ## Using it
 
@@ -92,7 +113,9 @@ Anything that works over MCP can be added the same way by editing `integrations.
 
 In `settings.json`, `models.chat` looks like `"claude:sonnet"` or `"ollama:qwen3:4b"`: the provider name, a colon, then the model.
 
-To use your Claude subscription, install Claude Code, run `claude` once, and log in with `/login`. Orbit talks to it through Anthropic's Agent SDK. It never touches your login details, and it switches off all of Claude Code's own tools, so the model can only use what Orbit gives it.
+To use your Claude subscription, click "Sign in to Claude" on the Setup page. A console window runs Claude Code's own sign-in, which opens your browser. Orbit talks to Claude through Anthropic's Agent SDK and never reads or stores your login. It also switches off all of Claude Code's own tools (shell, file editing and so on), so the model can only use what Orbit gives it.
+
+Different jobs can use different models: `models.quick` for the quick actions (Haiku by default), `models.chat` for the bar, `models.research` for background jobs (Sonnet by default).
 
 You can also use an Anthropic API key (`/key anthropic sk-...`) or anything with an OpenAI-compatible API: OpenAI, OpenRouter, Ollama, LM Studio.
 
@@ -102,7 +125,32 @@ If you're offline, or your Claude plan hits its limit, Orbit can fall back to a 
 
 ## What it's allowed to do
 
-Anything that changes something (sending, posting, writing, deleting) shows you a card first and waits for you to approve it. You can change that per tool in settings: always ask, always allow, or never. Text you select and pages Orbit reads are treated as data, so a web page can't talk the model into doing something. Every tool call is logged, and the dashboard's Logs page shows what was asked, whether you approved it, and what came back.
+Every tool has a risk class: it only reads, it changes Orbit's own stuff (memories, reminders, workflows, its files folder), it acts in another service (sends, posts, creates), or it deletes something outside Orbit. On the dashboard's Permissions page you pick how much Orbit can do without asking:
+
+| Level | Reads | Orbit's own stuff | Other services | Deletes |
+|---|---|---|---|---|
+| Strict | asks | asks | asks | asks |
+| Careful (default) | runs | runs | asks | asks |
+| Trusted | runs | runs | runs | asks |
+| Full | runs | runs | runs | runs |
+
+Below the levels you can set any single tool to always ask, always run, or never run, and that wins over the level. When a card does pop up, "Allow for this chat" lets that tool run without asking again until you start a new chat or hit the stop hotkey. At Strict, even steps a workflow was told to pre-approve ask you.
+
+Text you select and pages Orbit reads are treated as data, so a web page can't talk the model into doing something. Every tool call is logged, and the Logs page shows what was asked, whether you approved it, and what came back.
+
+## Undoing things
+
+Everything Orbit changes in its own space goes into a journal first: memories it saves, edits or deletes, reminders, workflows, and files it writes to its files folder. The Logs page lists recent changes with an Undo button, and you can also just say "undo that" in the bar.
+
+Orbit can't write to your own folders at all (the ones you allow are read-only), and workflow code runs in a sandbox with no file or network access. Things that leave your PC, like a sent email or a Slack post, can't be pulled back, which is why they ask first unless you've chosen Trusted or Full. Those are always in the log, so you can see exactly what went out and fix it by hand.
+
+## How many tokens it uses
+
+I built this to run on a Claude subscription, so it tries hard not to waste it. Claude Code's extras that cost tokens in the background (chat titles, prompt suggestions, auto memory and so on) are switched off. Tool descriptions are kept short, and the long workflow guide is only loaded when the model is actually writing a workflow. Quick actions go to Haiku.
+
+In practice a follow-up message costs about 5k tokens, and nearly all of that comes from the prompt cache (which counts far less against your limits). Starting a new chat costs under 1k new tokens.
+
+The Usage page shows tokens per day and which features used them. Background work (workflows, background jobs) has a daily budget, 300k tokens by default. Once it's used up, background runs are skipped until midnight and you get one notification. You can raise the budget (or set it to 0 for no limit) on the same page. Things you ask for in the bar are never blocked.
 
 ## Working on it
 
