@@ -31,3 +31,9 @@ export function resolveModel(ref: string): { runner: AgentRunner; model: string 
     }
   }
 }
+
+/** True when the model runs on this machine, so private memories may be sent to it. */
+export function isLocalModel(ref: string): boolean {
+  const cfg = settings.current.providers[ref.slice(0, ref.indexOf(':'))]
+  return cfg?.type === 'openai-compatible' && /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(cfg.baseURL)
+}

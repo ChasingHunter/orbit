@@ -77,7 +77,7 @@ export function App(): React.JSX.Element {
     setInput('')
     const { turnId } = await api.submit(text, ctx)
     if (!turnId) return // handled locally (slash command)
-    const canPaste = ctx.some((c) => c.kind === 'selection' || c.kind === 'window')
+    const canPaste = ctx.some((c) => c.kind === 'selection')
     setEntries((all) => [
       ...all,
       { kind: 'user', id: `u-${turnId}`, text, context: ctx },
