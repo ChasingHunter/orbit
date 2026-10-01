@@ -98,7 +98,9 @@ export const Settings = z.object({
       policy: z.record(z.string(), ToolPolicy).default({}),
       webSearch: z
         .object({
-          provider: z.enum(['brave', 'tavily']).default('brave')
+          provider: z.enum(['brave', 'tavily']).default('brave'),
+          /** Set when the key's free allowance runs out: Claude's own search is used until then. */
+          pausedUntil: z.string().optional()
         })
         .prefault({}),
       /** Sandboxed Python: limits per run. */

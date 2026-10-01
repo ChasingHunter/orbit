@@ -24,7 +24,7 @@ The rest is optional, and only matters for the feature next to it:
 |---|---|---|
 | Claude sign-in | Claude models on your subscription | One click on the Setup page |
 | Speech model (Parakeet, about 480 MB) | Talking to Orbit, all on your PC | Download button on the Setup page, or `/install-voice` |
-| Brave or Tavily key | Web search with Ollama or API-key models, and in workflow steps (Claude models search without one) | Free tier, paste it on the Setup page |
+| Tavily key (or Brave) | Cheaper web search, and search with Ollama, API-key models and workflows (Claude models search without one) | Free, about 1,000 searches a month, no card. Paste it on the Setup page |
 | [uv](https://docs.astral.sh/uv/) | Pocket TTS voice replies, Gmail and Calendar | Install it yourself |
 | [Node.js](https://nodejs.org/) | Slack and other `npx` integrations | Install it yourself |
 | [Ollama](https://ollama.com/) | Offline answers, private memories, the fallback when you hit your Claude limit | Install it yourself |
@@ -165,7 +165,7 @@ Different jobs can use different models: `models.quick` for the quick actions (H
 
 You can also use an Anthropic API key (`/key anthropic sk-...`) or anything with an OpenAI-compatible API: OpenAI, OpenRouter, Ollama, LM Studio.
 
-With Claude models, web search works out of the box: Orbit uses Claude's own search, which runs on your subscription. It's heavy, though: one search is about 12k tokens of your plan. A free key from [Brave Search](https://brave.com/search/api/) or Tavily brings that to about 1k, and Ollama, API-key models and workflow steps need one to search at all. Add it on the Setup page.
+With Claude models, web search works out of the box: Orbit uses Claude's own search, which runs on your subscription. It's heavy, though: one search is about 12k tokens of your plan. A free [Tavily](https://app.tavily.com) key (about 1,000 searches a month, no card) brings that to about 1k, and Ollama, API-key models and workflow steps need a key to search at all. Paste it on the Setup page; Orbit recognises it. If a month's free searches run out, Orbit tells you and uses Claude's own search until the month resets. A Brave key works too, but Brave now asks for a card and bills past its free credit.
 
 If you're offline, or your Claude plan hits its limit, Orbit can fall back to a model running in Ollama on your PC. Offline it switches by itself and tells you; at a limit it asks first.
 

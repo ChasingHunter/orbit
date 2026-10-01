@@ -4,12 +4,49 @@ import { parseHTML } from 'linkedom'
 import { getSecret } from '../../../secrets'
 import { settings } from '../../../settingsStore'
 import { defineTool } from '../types'
+import { Notification } from 'electron'
+import { getDb } from '../../db'
+
+/** Override for tests: where the Tavily API lives. */
+const TAVILY = process.env.ORBIT_TAVILY_API ?? 'https://api.tavily.com'
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Orbit/0.1'
 
-/** A Brave or Tavily key is saved. Without one, Claude models use Claude's own search instead. */
+/**
+ * A Brave or Tavily key is saved and its monthly allowance isn't used up. Otherwise Claude models
+ * use Claude's own search instead.
+ */
 export function hasSearchKey(): boolean {
+  const until = settings.current.tools.webSearch.pausedUntil
+  if (until && Date.parse(until) > Date.now()) return false
   return !!getSecret(settings.current.tools.webSearch.provider)
+}
+
+/** Searches made with the key this month, against the free allowance. */
+export function searchesThisMonth(): number {
+  const d = getDb()
+  d.exec('CREATE TABLE IF NOT EXISTS search_count (month TEXT PRIMARY KEY, n INTEGER NOT NULL)')
+  return (d.prepare('SELECT n FROM search_count WHERE month = ?').get(new Date().toISOString().slice(0, 7)) as { n: number } | undefined)?.n ?? 0
+}
+
+function countSearch(): void {
+  searchesThisMonth()
+  getDb().prepare('INSERT INTO search_count (month, n) VALUES (?, 1) ON CONFLICT(month) DO UPDATE SET n = n + 1').run(new Date().toISOString().slice(0, 7))
+}
+
+/** The free allowance ran out: hand searching to Claude until the 1st of next month, and say so once. */
+function allowanceUsedUp(provider: string): string {
+  const now = new Date()
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  settings.update((d) => {
+    d.tools.webSearch.pausedUntil = next.toISOString()
+  })
+  const name = provider === 'tavily' ? 'Tavily' : 'Brave'
+  const when = next.toLocaleDateString([], { day: 'numeric', month: 'long' })
+  if (Notification.isSupported()) {
+    new Notification({ title: `${name}'s free searches are used up for this month`, body: `Orbit uses Claude's own search until ${when}. It works the same, but costs more of your Claude plan.` }).show()
+  }
+  return `The ${name} search key has used up this month's free searches. From the next message on, Claude's own search is used instead (until ${when}). For now, answer without searching or tell the user.`
 }
 
 export const webSearch = defineTool({
@@ -29,17 +66,23 @@ export const webSearch = defineTool({
     if (provider === 'brave') {
       const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${count}`
       const res = await fetch(url, { signal, headers: { 'X-Subscription-Token': key, Accept: 'application/json' } })
+      // A 402 (payment required) is taken to mean the monthly credit has run out.
+      if (res.status === 402) return allowanceUsedUp('brave')
       if (!res.ok) throw new Error(`Brave search failed: ${res.status} ${await res.text()}`)
+      countSearch()
       const data = (await res.json()) as { web?: { results?: { title: string; url: string; description?: string }[] } }
       return format((data.web?.results ?? []).map((r) => ({ title: r.title, url: r.url, snippet: r.description })))
     }
-    const res = await fetch('https://api.tavily.com/search', {
+    const res = await fetch(`${TAVILY}/search`, {
       method: 'POST',
       signal,
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, max_results: count })
     })
+    // 432: the plan's monthly limit; 433: the pay-as-you-go limit.
+    if (res.status === 432 || res.status === 433) return allowanceUsedUp('tavily')
     if (!res.ok) throw new Error(`Tavily search failed: ${res.status} ${await res.text()}`)
+    countSearch()
     const data = (await res.json()) as { results?: { title: string; url: string; content?: string }[] }
     return format((data.results ?? []).map((r) => ({ title: r.title, url: r.url, snippet: r.content })))
   }

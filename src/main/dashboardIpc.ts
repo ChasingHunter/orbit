@@ -317,7 +317,15 @@ export function registerDashboardIpc(): void {
     else if (a.kind === 'url' && a.target) openUrl(a.target)
   })
   ipcMain.handle('dash:save-search-key', (_e, key: string) => {
-    if (key) setSecret(settings.current.tools.webSearch.provider, key)
+    const k = key.trim()
+    if (!k) return
+    // Tavily keys start with tvly-; anything else is taken as a Brave key.
+    const provider = k.startsWith('tvly-') ? 'tavily' : 'brave'
+    setSecret(provider, k)
+    settings.update((d) => {
+      d.tools.webSearch.provider = provider
+      d.tools.webSearch.pausedUntil = undefined
+    })
   })
 
   ipcMain.handle('dash:tasks', () => tasks.list())
