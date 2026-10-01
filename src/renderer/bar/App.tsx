@@ -40,7 +40,11 @@ import { Recorder } from './recorder'
 import { PcmPlayer, SentenceSplitter } from './player'
 
 const api = window.orbit
-const recorder = new Recorder()
+const recorder = new Recorder((samples) => api.sttChunk(samples))
+// Opening the mic the first time takes a couple of seconds; do it now so first words aren't lost.
+void recorder.warm().catch(() => {})
+/** Audio kept after you stop, so the last word isn't cut off. */
+const TAIL_MS = 150
 const player = new PcmPlayer()
 /** Whether spoken replies are on; answers show a Read aloud button when they are. */
 let speechOn = false
@@ -214,13 +218,26 @@ export function App(): React.JSX.Element {
           awaitingTranscript.current = false
           if (ev.value) {
             recorder.start().catch((err: Error) => {
-              api.voiceEnded()
+              api.sttEnd(true)
               setEntries((all) => [
                 ...all,
                 { kind: 'notice', id: crypto.randomUUID(), level: 'error', text: `Microphone unavailable: ${err.message}` }
               ])
             })
-          } else void finishRecording(ev.discard === true)
+          } else {
+            const discard = ev.discard === true
+            void (async () => {
+              if (!discard) await new Promise((r) => setTimeout(r, TAIL_MS))
+              await recorder.stop()
+              api.sttEnd()
+            })()
+          }
+          break
+        case 'transcribing':
+          setTranscribing(ev.value)
+          break
+        case 'transcript':
+          if (ev.text) insertTranscript(ev.text)
           break
         case 'reset':
           setEntries([])
@@ -283,28 +300,14 @@ export function App(): React.JSX.Element {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [entries, approvals])
 
-  /** Local engine: stop the mic, transcribe on-device, drop the text into the input. */
-  const finishRecording = async (discard: boolean): Promise<void> => {
-    const samples = await recorder.stop()
-    if (discard || samples.length === 0) return
-    setTranscribing(true)
-    try {
-      const text = await api.transcribe(samples)
-      if (!text) return
-      const next = state.current.input.trim() ? `${state.current.input.trimEnd()} ${text}` : text
-      spokenQuestion.current = true
-      setInput(next)
-      state.current.input = next
-      inputRef.current?.focus()
-      if (autoSubmitMs.current !== null) submitTimer.current = setTimeout(() => void submit(), autoSubmitMs.current)
-    } catch (err) {
-      setEntries((all) => [
-        ...all,
-        { kind: 'notice', id: crypto.randomUUID(), level: 'error', text: `Transcription failed: ${(err as Error).message}` }
-      ])
-    } finally {
-      setTranscribing(false)
-    }
+  /** Local dictation finished: put the text in the input and send it if auto-submit is on. */
+  const insertTranscript = (text: string): void => {
+    const next = state.current.input.trim() ? `${state.current.input.trimEnd()} ${text}` : text
+    spokenQuestion.current = true
+    setInput(next)
+    state.current.input = next
+    inputRef.current?.focus()
+    if (autoSubmitMs.current !== null) submitTimer.current = setTimeout(() => void submit(), autoSubmitMs.current)
   }
 
   const onInputChange = (value: string): void => {

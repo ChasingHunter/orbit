@@ -54,7 +54,6 @@ export type DashSettings = {
   /** Space the backups of changed files take. */
   snapshotMb: number
   snapshotDays: number
-  voiceMode: 'toggle' | 'hold'
   startWithWindows: boolean
   autoUpdate: boolean
   version: string
@@ -224,7 +223,7 @@ export interface DashApi {
   setToolPolicy(name: string, policy: 'level' | 'ask' | 'always' | 'never'): Promise<void>
   setBudget(tokensPerDay: number): Promise<void>
   settings(): Promise<DashSettings>
-  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[]; writableFolders?: string[]; voiceMode?: DashSettings['voiceMode']; startWithWindows?: boolean; autoUpdate?: boolean; speech?: Partial<DashSettings['speech']>; claudeExecutable?: 'bundled' | 'installed' }): Promise<void>
+  updateSettings(patch: { models?: Partial<DashSettings['models']>; voiceEngine?: DashSettings['voiceEngine']; allowedFolders?: string[]; writableFolders?: string[]; startWithWindows?: boolean; autoUpdate?: boolean; speech?: Partial<DashSettings['speech']>; claudeExecutable?: 'bundled' | 'installed' }): Promise<void>
   /** Says a short sample with the current speech settings. */
   testSpeech(): Promise<void>
   /** Throws if another app already owns the combination. */

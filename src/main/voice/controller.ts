@@ -2,6 +2,11 @@ import type { BarEvent } from '@shared/types'
 import { settings } from '../settingsStore'
 import { toggleWispr } from '../os/wispr'
 import { installModel, isModelInstalled, MODEL, warmUp } from './localStt'
+import { LiveTranscriber } from './live'
+import { logInfo } from '../log'
+
+/** A recording stops by itself after this long. */
+const MAX_SECONDS = 300
 
 type Send = (e: BarEvent) => void
 
@@ -12,6 +17,11 @@ type Send = (e: BarEvent) => void
  */
 export class VoiceController {
   listening = false
+  private live: LiveTranscriber | undefined
+  private started = 0
+  private maxTimer: NodeJS.Timeout | undefined
+  /** Resolves when the bar has sent its last audio after being told to stop. */
+  private recorderDone: (() => void) | undefined
 
   constructor(private send: Send) {}
 
@@ -20,6 +30,55 @@ export class VoiceController {
     this.listening = value
     this.send({ type: 'listening', value })
     if (engine === 'local') this.send({ type: 'record', value, discard })
+  }
+
+  /** Audio from the bar while recording; transcribed piece by piece as you pause. */
+  chunk(samples: Float32Array): void {
+    this.live?.push(samples)
+  }
+
+  /** The bar stopped its recorder and sent everything. */
+  recorderEnded(): void {
+    this.recorderDone?.()
+  }
+
+  /** The bar couldn't open the mic: stop showing "listening". */
+  micFailed(): void {
+    this.live?.cancel()
+    this.live = undefined
+    clearTimeout(this.maxTimer)
+    this.listening = false
+    this.send({ type: 'listening', value: false })
+  }
+
+  /** Stops the recorder in the bar, waits (up to 5 s) for its last audio, then finishes the text. */
+  private async finishLocal(discard: boolean): Promise<void> {
+    clearTimeout(this.maxTimer)
+    const live = this.live
+    this.live = undefined
+    const done = new Promise<void>((r) => {
+      this.recorderDone = r
+      setTimeout(r, 5000)
+    })
+    this.set(false, discard)
+    if (!live) return
+    if (discard) {
+      live.cancel()
+      return
+    }
+    this.send({ type: 'transcribing', value: true })
+    try {
+      await done
+      const t0 = Date.now()
+      const text = await live.finish()
+      logInfo(`stt: ${(live.samples / 16000).toFixed(1)}s audio, ${live.piecesDone} pieces done while talking, last bit in ${Date.now() - t0} ms -> ${text.length} chars`)
+      this.send({ type: 'transcript', text })
+    } catch (err) {
+      this.send({ type: 'notice', level: 'error', text: `Transcription failed: ${err instanceof Error ? err.message : String(err)}` })
+    } finally {
+      this.recorderDone = undefined
+      this.send({ type: 'transcribing', value: false })
+    }
   }
 
   async start(): Promise<void> {
@@ -36,6 +95,9 @@ export class VoiceController {
         })
         return
       }
+      this.live = new LiveTranscriber()
+      this.started = Date.now()
+      this.maxTimer = setTimeout(() => void this.stop(), MAX_SECONDS * 1000)
       this.set(true)
       return
     }
@@ -46,6 +108,7 @@ export class VoiceController {
   /** Stop and transcribe (local) or let Wispr paste. */
   async stop(): Promise<void> {
     if (!this.listening) return
+    if (settings.current.voice.engine === 'local') return this.finishLocal(false)
     if (settings.current.voice.engine === 'wispr') await toggleWispr()
     this.set(false)
   }
@@ -53,6 +116,7 @@ export class VoiceController {
   /** Stop without producing text (bar closed / clicked away). */
   async cancel(): Promise<void> {
     if (!this.listening) return
+    if (settings.current.voice.engine === 'local') return this.finishLocal(true)
     if (settings.current.voice.engine === 'wispr') await toggleWispr()
     this.set(false, true)
   }

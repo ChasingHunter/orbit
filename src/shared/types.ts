@@ -42,6 +42,10 @@ export type BarEvent =
   | { type: 'open'; context: ContextItem[]; autoSubmitMs: number | null; speak?: 'off' | 'voice' | 'always'; quickActions: { label: string; prompt: string; output: 'popup' | 'replace' | 'copy' }[] }
   | { type: 'context-add'; item: ContextItem }
   | { type: 'listening'; value: boolean }
+  /** Local dictation: the text is being finished after you stopped talking. */
+  | { type: 'transcribing'; value: boolean }
+  /** Local dictation: the finished text, for the input. */
+  | { type: 'transcript'; text: string }
   | { type: 'agent'; turnId: string; event: AgentEvent }
   | { type: 'approval'; request: ApprovalRequest }
   | { type: 'notice'; level: 'info' | 'error'; text: string; action?: { label: string; command: string } }
@@ -77,8 +81,10 @@ export interface OrbitApi {
   speak(text: string): void
   stopSpeaking(): void
   toggleVoice(): void
-  /** Local engine: 16 kHz mono samples -> text. */
-  transcribe(samples: Float32Array): Promise<string>
+  /** Local engine: a chunk of 16 kHz mono audio while recording. */
+  sttChunk(samples: Float32Array): void
+  /** Local engine: the recorder stopped; everything has been sent (or it failed to start). */
+  sttEnd(failed?: boolean): void
   /** Transcript arrived in the input (e.g. Wispr stopped from its own UI). */
   voiceEnded(): void
   hide(): void

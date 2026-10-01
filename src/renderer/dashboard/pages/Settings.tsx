@@ -70,15 +70,6 @@ export function SettingsPage(): React.JSX.Element {
             <option value="wispr">Wispr Flow</option>
             <option value="off">Off</option>
           </select>
-          <select
-            value={s.voiceMode}
-            onChange={(e) => void dash.updateSettings({ voiceMode: e.target.value as DashSettings['voiceMode'] })}
-            className={selectClass}
-            aria-label="How the hotkey records"
-          >
-            <option value="toggle">Press to start, press again to send</option>
-            <option value="hold">Hold while talking, let go to send</option>
-          </select>
           {s.voiceEngine === 'local' && !s.voiceModelInstalled && (
             <span className="flex items-center gap-2 text-sm text-amber-300">
               <Download size={14} /> The speech model downloads the first time you talk (482 MB).

@@ -40,7 +40,6 @@ type SettingsPatch = {
   voiceEngine?: DashSettings['voiceEngine']
   allowedFolders?: string[]
   writableFolders?: string[]
-  voiceMode?: DashSettings['voiceMode']
   startWithWindows?: boolean
   autoUpdate?: boolean
   speech?: Partial<DashSettings['speech']>
@@ -347,7 +346,6 @@ export function registerDashboardIpc(): void {
       writableFolders: settings.current.files.writableFolders,
       snapshotMb: Math.ceil(snapshotBytes() / 1e6),
       snapshotDays: settings.current.files.snapshotDays,
-      voiceMode: settings.current.voice.mode,
       startWithWindows: settings.current.ui.startWithWindows,
       autoUpdate: settings.current.ui.autoUpdate,
       // From package.json so dev runs don't report Electron's own version.
@@ -365,7 +363,6 @@ export function registerDashboardIpc(): void {
         d.files.writableFolders = d.files.writableFolders.filter((f) => patch.allowedFolders!.includes(f))
       }
       if (patch.writableFolders) d.files.writableFolders = patch.writableFolders.filter((f) => d.files.allowedFolders.includes(f))
-      if (patch.voiceMode) d.voice.mode = patch.voiceMode
       if (patch.startWithWindows !== undefined) d.ui.startWithWindows = patch.startWithWindows
       if (patch.autoUpdate !== undefined) d.ui.autoUpdate = patch.autoUpdate
       if (patch.speech) Object.assign(d.speech, patch.speech)

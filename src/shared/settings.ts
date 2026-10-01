@@ -45,9 +45,7 @@ export const Settings = z.object({
       // Start dictation automatically when the bar opens via hotkey.
       startOnBarOpen: z.boolean().default(true),
       autoSubmit: z.boolean().default(true),
-      autoSubmitDelayMs: z.number().int().min(0).default(700),
-      /** toggle: press to start, press again to send. hold: hold while talking, let go to send (a quick tap still toggles). */
-      mode: z.enum(['toggle', 'hold']).default('toggle')
+      autoSubmitDelayMs: z.number().int().min(0).default(700)
     })
     .prefault({}),
 

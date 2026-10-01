@@ -71,7 +71,7 @@ A few commands you can type in the bar:
 
 Speech-to-text runs on your own machine using NVIDIA's Parakeet model through [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx). No account, no word limit, nothing leaves your PC. The first time you use it, Orbit downloads the model (482 MB). On my 4-core i5 laptop it turns 10 seconds of speech into text in about 1.3 seconds. It only does English for now.
 
-You can press the hotkey once to start and again to send, or switch to hold-to-talk in Settings: hold while you speak, let go to send.
+Press the hotkey once to start talking and again to send. Orbit transcribes while you talk, so the text is ready about a second after you stop, and a recording stops by itself after 5 minutes.
 
 Orbit can talk back too. With [Kyutai's Pocket TTS](https://github.com/kyutai-labs/pocket-tts) installed (`uv tool install pocket-tts`, or just have `uvx` available), turn on Spoken replies in Settings and pick a voice. It runs on your CPU, starts speaking the first sentence while the rest of the answer is still being written, and by default only speaks when you asked by voice. Esc, closing the bar or asking something new stops it. Windows' built-in voice works as a fallback if you don't want to install anything.
 

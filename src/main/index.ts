@@ -22,7 +22,7 @@ import { createTray } from './os/tray'
 import { currentSelection, startSelectionHook, stopSelectionHook } from './os/selection'
 import { snipRegion } from './os/screenshot'
 import { VoiceController } from './voice/controller'
-import { transcribe, warmUp } from './voice/localStt'
+import { warmUp } from './voice/localStt'
 import { integrations } from './integrations/manager'
 import { tasks } from './core/tasks'
 import { scheduler } from './core/scheduler'
@@ -47,7 +47,7 @@ import { modelChoices } from './runners/choices'
 import { claudeStatus, runChecks } from './system/health'
 import { openDashboard } from './windows/dashboard'
 import { pasteInto, snapshotClipboard } from './os/writeback'
-import { acceleratorKey, foregroundWindow, isKeyDown, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
+import { foregroundWindow, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
 import { applyStartWithWindows, handOffToInstalled, repairShortcut, startAutoUpdates } from './os/system'
 
 ensureDataDirs()
@@ -104,21 +104,8 @@ async function captureContext(): Promise<ContextItem[]> {
   return items
 }
 
-/**
- * Hold-to-talk: after the hotkey starts dictation, wait until its main key is released and stop.
- * A quick tap (under 350 ms) leaves dictation running, so tapping still works like toggle mode.
- */
-async function stopWhenReleased(): Promise<void> {
-  const vk = acceleratorKey(settings.current.hotkeys.bar)
-  if (!vk) return
-  const pressedAt = Date.now()
-  while (isKeyDown(vk)) await new Promise((r) => setTimeout(r, 30))
-  if (Date.now() - pressedAt >= 350 && voice.listening) await voice.stop()
-}
-
 /** Bar hotkey: open (+ start dictation) → press again to stop dictation → again to restart. */
 async function onBarHotkey(): Promise<void> {
-  const hold = settings.current.voice.mode === 'hold' && !process.env.ORBIT_E2E
   const w = bar()
   if (!w.isVisible()) {
     const context = await captureContext()
@@ -126,15 +113,11 @@ async function onBarHotkey(): Promise<void> {
     sendToBar({ type: 'open', context, autoSubmitMs: autoSubmitMs(), speak: speakMode(), quickActions: settings.current.quickActions })
     showBar()
     attachBrowserUrl()
-    if (settings.current.voice.startOnBarOpen) {
-      await voice.start()
-      if (hold) await stopWhenReleased()
-    }
+    if (settings.current.voice.startOnBarOpen) await voice.start()
     return
   }
   w.focus()
   await voice.toggle()
-  if (hold && voice.listening) await stopWhenReleased()
 }
 
 /** Adds the active tab's URL as a chip once it's known, without holding up the bar. */
@@ -271,12 +254,8 @@ function registerIpc(): void {
   })
   ipcMain.on('bar:voice-toggle', () => void voice.toggle())
   ipcMain.on('bar:voice-ended', () => voice.ended())
-  ipcMain.handle('stt:transcribe', async (_e, samples: Float32Array) => {
-    const t0 = Date.now()
-    const text = await transcribe(samples)
-    logInfo(`stt: ${(samples.length / 16000).toFixed(1)}s audio -> ${text.length} chars in ${Date.now() - t0} ms`)
-    return text
-  })
+  ipcMain.on('stt:chunk', (_e, samples: Float32Array) => voice.chunk(samples))
+  ipcMain.on('stt:end', (_e, failed?: boolean) => (failed ? voice.micFailed() : voice.recorderEnded()))
   ipcMain.on('bar:speak', (_e, text: string) => speaker.say(text))
   ipcMain.handle('dash:test-speech', () => {
     stopSpeaking()

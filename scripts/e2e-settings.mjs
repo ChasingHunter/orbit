@@ -1,4 +1,4 @@
-// Settings e2e: change a hotkey by pressing keys, switch voice to hold mode, flip toggles.
+// Settings e2e: change a hotkey by pressing keys, flip toggles.
 // No model calls. Run: npm run build && node scripts/e2e-settings.mjs
 import { _electron as electron } from 'playwright'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -33,9 +33,7 @@ await d.keyboard.press('Control+Alt+KeyK')
 await d.waitForTimeout(400)
 check('hotkey changed by pressing keys', saved().hotkeys.bar === 'Control+Alt+K', saved().hotkeys.bar)
 
-await d.selectOption('select[aria-label="How the hotkey records"]', 'hold')
 await d.waitForTimeout(300)
-check('voice switched to hold-to-talk', saved().voice.mode === 'hold')
 
 await d.locator('label', { hasText: 'Start when Windows starts' }).locator('input').uncheck()
 await d.waitForTimeout(300)
