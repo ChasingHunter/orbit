@@ -43,6 +43,8 @@ export const browserAct = defineTool({
   risk: 'external',
   // Passwords, card details and buttons that pay or buy ask every time, even at Full.
   alwaysAsk: ({ id }) => !!(id && control(id)?.sensitive),
+  // Whatever goes into a password, card or similar field stays out of the log.
+  auditInput: (input) => (input.id && control(input.id)?.sensitive && input.text ? { ...input, text: '[hidden]' } : input),
   describe: ({ action, id, text }) => {
     const c = id ? control(id) : undefined
     const what = c ? `"${c.label || c.tag}"` : `[${id}]`

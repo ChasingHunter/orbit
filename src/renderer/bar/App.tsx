@@ -720,6 +720,30 @@ function MadeFile({ path: initial }: { path: string }): React.JSX.Element {
   )
 }
 
+/** A unified diff, git style: removed lines red, added lines green, hunk headers dim. */
+function DiffView({ text, className = '' }: { text: string; className?: string }): React.JSX.Element {
+  return (
+    <div className={`overflow-auto rounded-lg bg-black/40 py-1.5 font-mono text-[11px] leading-[1.45] ${className}`} data-diff>
+      {text.split('\n').map((line, i) => {
+        const cls = line.startsWith('+')
+          ? 'bg-emerald-500/15 text-emerald-200'
+          : line.startsWith('-')
+            ? 'bg-rose-500/15 text-rose-200'
+            : line.startsWith('@@')
+              ? 'text-sky-300/70'
+              : line.startsWith('Careful:')
+                ? 'text-amber-300'
+                : 'text-zinc-400'
+        return (
+          <div key={i} className={`px-2.5 whitespace-pre-wrap break-words ${cls}`}>
+            {line || ' '}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
@@ -970,7 +994,9 @@ function ApprovalCard(props: { req: ApprovalRequest; onDecide: (id: string, deci
         <ShieldAlert size={14} /> APPROVAL NEEDED · {req.tool}
       </div>
       <div className="mt-1.5 text-sm text-zinc-100">{req.title}</div>
-      {req.preview ? (
+      {req.preview && req.previewKind === 'diff' ? (
+        <DiffView text={req.preview} className="mt-2 max-h-72" />
+      ) : req.preview ? (
         <pre className="mt-2 max-h-56 overflow-auto rounded-lg bg-black/30 p-2.5 font-sans text-xs break-words whitespace-pre-wrap text-zinc-200">{req.preview}</pre>
       ) : (
         <dl className="mt-2 max-h-48 space-y-1.5 overflow-auto rounded-lg bg-black/30 p-2.5 text-xs">

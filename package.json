@@ -24,6 +24,7 @@
     "ai": "7.0.123",
     "chart.js": "4.5.1",
     "croner": "10.0.1",
+    "diff": "9.0.0",
     "docx": "9.8.1",
     "electron-updater": "6.8.9",
     "exceljs": "4.4.0",

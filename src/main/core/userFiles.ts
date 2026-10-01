@@ -15,7 +15,7 @@ import { ensureRoom } from './disk'
 
 export type FileOp =
   | { op: 'create'; path: string; after: string }
-  | { op: 'edit'; path: string; snap: string; after: string }
+  | { op: 'edit'; path: string; snap: string; after: string; /** Unified diff, for Logs. */ diff?: string }
   | { op: 'delete'; path: string; snap: string }
   | { op: 'move'; from: string; to: string; after: string }
 
@@ -98,26 +98,60 @@ function snapName(from: string): string {
   return `${Date.now()}-${randomUUID().slice(0, 8)}${extname(from).toLowerCase()}`
 }
 
-/** Copies a file into the snapshot store and returns its name there. */
+/** When a backup was taken, from its name. (Not the file's date: copies keep the original's.) */
+export function snapshotTime(name: string): number {
+  const t = Number(name.match(/^(\d{12,})-/)?.[1])
+  return Number.isFinite(t) && t > 0 ? t : 0
+}
+
+/** Throws unless the backup holds exactly the bytes it should. Nothing is changed before this passes. */
+function verifySnap(dest: string, hash: string, of: string): void {
+  if (!existsSync(dest) || hashFile(dest) !== hash) {
+    rmSync(dest, { force: true })
+    throw new Error(`Couldn't make a reliable backup of ${basename(of)}, so it wasn't changed`)
+  }
+}
+
+/** Copies a file into the snapshot store, checks the copy, and returns its name there. */
 export function keepCopy(path: string): string {
   ensureRoom(statSync(path).size, `back up ${basename(path)} first`)
+  const hash = hashFile(path)
   const name = snapName(path)
-  copyFileSync(path, join(snapDir(), name))
+  const dest = join(snapDir(), name)
+  copyFileSync(path, dest)
+  verifySnap(dest, hash, path)
   return name
 }
 
-/** Moves a file into the snapshot store (a delete you can undo). */
+/** Moves a file into the snapshot store (a delete you can undo), checking it arrived intact. */
 function keepByMoving(path: string): string {
+  const hash = hashFile(path)
   const name = snapName(path)
   const dest = join(snapDir(), name)
   try {
     renameSync(path, dest)
   } catch {
-    // Different drive: copy, then remove.
+    // Different drive: copy, check, and only then remove the original.
+    ensureRoom(statSync(path).size, `back up ${basename(path)} first`)
     copyFileSync(path, dest)
+    verifySnap(dest, hash, path)
     unlinkSync(path)
+    return name
   }
+  verifySnap(dest, hash, path)
   return name
+}
+
+/** Writes through a temporary file and a rename, so a crash can't leave a half-written file. */
+function writeAtomic(path: string, content: string | Buffer): void {
+  const tmp = `${path}.orbit-${randomUUID().slice(0, 8)}.tmp`
+  writeFileSync(tmp, content)
+  try {
+    renameSync(tmp, path)
+  } catch (err) {
+    rmSync(tmp, { force: true })
+    throw err
+  }
 }
 
 export function restoreSnap(snap: string, to: string): void {
@@ -138,12 +172,20 @@ export function pruneSnapshots(freeBytes = Number.POSITIVE_INFINITY): number {
   const snapshotMaxMb = Math.min(settings.current.files.snapshotMaxMb, (snapshotBytes() + freeBytes) / 10 / 1024 / 1024)
   const cutoff = Date.now() - snapshotDays * 86_400_000
   let freed = 0
+  // Age comes from when the backup was taken (its name), never the file's date: a copy keeps the
+  // original's modified time, so an old file's fresh backup would otherwise look expired at once.
   const files = readdirSync(dir)
-    .map((n) => ({ n, s: statSync(join(dir, n)) }))
-    .sort((a, b) => a.s.mtimeMs - b.s.mtimeMs)
+    .map((n) => {
+      const s = statSync(join(dir, n))
+      return { n, s, at: snapshotTime(n) || s.birthtimeMs || s.mtimeMs }
+    })
+    .sort((a, b) => a.at - b.at)
   let total = files.reduce((t, f) => t + f.s.size, 0)
+  const dayAgo = Date.now() - 86_400_000
   for (const f of files) {
-    if (f.s.mtimeMs >= cutoff && total <= snapshotMaxMb * 1024 * 1024) break
+    if (f.at >= cutoff && total <= snapshotMaxMb * 1024 * 1024) break
+    // Over the size cap, a backup under a day old still stays: it's the one most likely needed.
+    if (f.at >= cutoff && f.at > dayAgo) break
     rmSync(join(dir, f.n), { force: true })
     total -= f.s.size
     freed += f.s.size
@@ -170,10 +212,10 @@ export function copyIn(from: string, to: string): FileOp {
   return { op: 'create', path: to, after: hashFile(to) }
 }
 
-export function editText(path: string, content: string): FileOp {
+export function editText(path: string, content: string, diff?: string): FileOp {
   const snap = keepCopy(path)
-  writeFileSync(path, content)
-  return { op: 'edit', path, snap, after: hashFile(path) }
+  writeAtomic(path, content)
+  return { op: 'edit', path, snap, after: hashFile(path), diff }
 }
 
 export function remove(path: string): FileOp {

@@ -26,6 +26,10 @@ export interface OrbitTool<S extends z.ZodRawShape = z.ZodRawShape> {
   describe?: (input: z.infer<z.ZodObject<S>>) => string
   /** Readable detail for the approval card (a list of renames, the text being replaced), shown instead of the raw input. */
   preview?: (input: z.infer<z.ZodObject<S>>) => string
+  /** What goes in the tool log instead of the raw input, to keep secrets out of it. */
+  auditInput?: (input: z.infer<z.ZodObject<S>>) => unknown
+  /** 'diff': the preview is a unified diff, shown in red and green. */
+  previewKind?: 'diff'
   /** Asks before this call whatever the level or earlier "allow for this chat" (e.g. a password field). Only "never" still wins. */
   alwaysAsk?: (input: z.infer<z.ZodObject<S>>) => boolean
   /** Set on a connected service's tools. Those reach the model through service_tools/service_call unless loaded up front. */

@@ -5,6 +5,7 @@ import { app } from 'electron'
 import { settings } from '../../../settingsStore'
 import { defineTool } from '../types'
 import { extractText } from '../../extract'
+import { noteRead } from '../../readTracker'
 import { paths } from '../../../paths'
 import { skillDirs } from '../../skills'
 import { projectPaths } from '../../projects'
@@ -105,6 +106,7 @@ export const readFile = defineTool({
     const size = statSync(file).size
     if (size > MAX_BYTES) throw new Error(`File is ${Math.round(size / 1e6)} MB; the limit is 25 MB`)
     const all = await extractText(file)
+    noteRead(file)
     let text = all.slice(offset, offset + maxChars)
     if (offset + maxChars < all.length) text += `\n…[truncated at ${offset + maxChars} of ${all.length} characters; pass offset to read on]`
     return `<untrusted_file path="${file}">\n${text}\n</untrusted_file>`

@@ -23,8 +23,8 @@ const blob = randomBytes(300_000)
 writeFileSync(join(work, 'photo.bin'), blob)
 for (const [n, id] of [['scan_001.pdf', 17], ['scan_002.pdf', 18], ['scan_003.pdf', 19]]) writeFileSync(join(work, n), `%PDF fake invoice ${id}`)
 // A stale backup that pruning should remove.
-writeFileSync(join(snaps, '1000-old.txt'), 'stale')
-utimesSync(join(snaps, '1000-old.txt'), new Date('2020-01-01'), new Date('2020-01-01'))
+const STALE = `${Date.parse('2020-01-01')}-old.txt`
+writeFileSync(join(snaps, STALE), 'stale')
 
 writeFileSync(
   join(dataDir, 'settings.json'),
@@ -82,11 +82,12 @@ r = await tool('create_file', { path: join(work, 'run.bat'), content: 'echo hi' 
 check('refuses files that run when opened', r.isError && /\.bat/.test(r.output))
 r = await tool('create_file', { path: join(work, 'sneaky', 'x.txt'), content: 'x' })
 check('a junction can\'t lead out', r.isError && !existsSync(join(secret, 'x.txt')), r.output.slice(0, 80))
-check('stale backups are pruned', !existsSync(join(snaps, '1000-old.txt')))
+check('stale backups are pruned', !existsSync(join(snaps, STALE)))
 await undoLast()
 check('undo removes a created file', !existsSync(join(work, 'todo.txt')))
 
-// Edit
+// Edit (read first, as the model must)
+await tool('read_file', { path: join(work, 'notes.md') })
 r = await tool('edit_file', { path: join(work, 'notes.md'), edits: [{ find: 'Status: draft', replace: 'Status: final' }] })
 check('edits by find and replace', !r.isError && read(join(work, 'notes.md')).includes('Status: final'))
 r = await tool('edit_file', { path: join(work, 'notes.md'), edits: [{ find: 'e', replace: 'E' }] })

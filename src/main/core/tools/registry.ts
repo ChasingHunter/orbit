@@ -47,6 +47,7 @@ async function invoke(tool: OrbitTool, rawInput: unknown, opts: CallOptions): Pr
   if (!parsed.success) return { output: `Invalid input: ${parsed.error.message}`, isError: true }
   const input = parsed.data
 
+  const logged = tool.auditInput ? tool.auditInput(input) : input
   const mustAsk = !!tool.alwaysAsk?.(input)
   const preApproved = !!opts.preApproved && honorsPreApproval() && !mustAsk
   let decision: 'allowed' | 'approved' = preApproved ? 'approved' : 'allowed'
@@ -58,18 +59,18 @@ async function invoke(tool: OrbitTool, rawInput: unknown, opts: CallOptions): Pr
     } catch (err) {
       // A preview that can't be built (file missing, path refused) means the call would fail too.
       const output = err instanceof Error ? err.message : String(err)
-      audit({ tool: tool.name, input, decision: 'allowed', ok: false, output })
+      audit({ tool: tool.name, input: logged, decision: 'allowed', ok: false, output })
       return { output, isError: true }
     }
     // Workflows run without a chat to remember "allow for this chat" in, so they only get yes/no.
     const answer = await requestDecision(
-      { tool: tool.name, title: opts.origin ? `${opts.origin}: ${title}` : title, input, preview, allowChat: !opts.origin && !mustAsk },
+      { tool: tool.name, title: opts.origin ? `${opts.origin}: ${title}` : title, input, preview, previewKind: tool.previewKind, allowChat: !opts.origin && !mustAsk },
       opts.signal
     )
     if (answer === 'chat' && !mustAsk) allowForThisChat(tool.name)
     const ok = answer !== 'deny'
     if (!ok) {
-      audit({ tool: tool.name, input, decision: 'denied' })
+      audit({ tool: tool.name, input: logged, decision: 'denied' })
       return { output: 'The user declined this action. Do not retry it unless asked.', isError: true }
     }
     decision = 'approved'
@@ -78,11 +79,11 @@ async function invoke(tool: OrbitTool, rawInput: unknown, opts: CallOptions): Pr
   try {
     let output = await tool.run(input, { signal: opts.signal, context: opts.context, source: opts.source ?? 'workflow' })
     if (output.length > MAX_OUTPUT) output = `${output.slice(0, MAX_OUTPUT)}\n…[cut at ${MAX_OUTPUT} of ${output.length} characters; ask for less, e.g. with a filter or a smaller page size]`
-    audit({ tool: tool.name, input, decision, ok: true, output })
+    audit({ tool: tool.name, input: logged, decision, ok: true, output })
     return { output, isError: false }
   } catch (err) {
     const output = err instanceof Error ? err.message : String(err)
-    audit({ tool: tool.name, input, decision, ok: false, output })
+    audit({ tool: tool.name, input: logged, decision, ok: false, output })
     return { output, isError: true }
   }
 }

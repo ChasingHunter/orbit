@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { basename, dirname, extname, join, relative } from 'node:path'
 import { defineTool } from '../types'
+import { structuredPatch } from 'diff'
+import { assertReadAndUnchanged, noteRead } from '../../readTracker'
 import { checked } from './folders'
 import { TEXT_TYPES } from '../../extract'
 import { markSaved } from '../../madeFiles'
@@ -47,23 +49,43 @@ export const createFile = defineTool({
   }
 })
 
-function editedContent(file: string, edits: { find: string; replace: string }[] | undefined, content: string | undefined): string {
+/**
+ * The file after the edit. Works on a \n-only copy so finds match whatever line endings the file
+ * uses, then puts the file's own endings back. A whole-content rewrite also keeps the file's final
+ * newline (or lack of one), so repeated edits can't pile up blank lines at the end.
+ */
+function editedContent(file: string, edits: { find: string; replace: string }[] | undefined, content: string | undefined): { before: string; after: string } {
   if (!TEXT_TYPES.has(extname(file).toLowerCase())) throw new Error(`Only text files can be edited (not ${extname(file) || 'this type'})`)
-  if (content !== undefined) return content
-  if (!edits?.length) throw new Error('Give either edits or content')
-  let text = readFileSync(file, 'utf8')
-  for (const e of edits) {
-    const count = text.split(e.find).length - 1
-    if (count !== 1) throw new Error(`"${clip(e.find, 60)}" appears ${count} times in the file; it must appear exactly once. Include more surrounding text.`)
-    text = text.replace(e.find, () => e.replace)
+  if (edits?.length && content !== undefined) throw new Error('Give either edits or content, not both')
+  const before = readFileSync(file, 'utf8')
+  const crlf = before.includes('\r\n')
+  const lf = (t: string): string => t.replace(/\r\n/g, '\n')
+  let text = lf(before)
+  if (content !== undefined) {
+    text = lf(content).replace(/\n+$/, '') + (/\n$/.test(text) ? '\n' : '')
+  } else {
+    if (!edits?.length) throw new Error('Give either edits or content')
+    for (const e of edits) {
+      const find = lf(e.find)
+      const count = text.split(find).length - 1
+      if (count !== 1) throw new Error(`"${clip(e.find, 60)}" appears ${count} times in the file; it must appear exactly once. Include more surrounding text.`)
+      text = text.replace(find, () => lf(e.replace))
+    }
   }
-  return text
+  return { before, after: crlf ? text.replace(/\n/g, '\r\n') : text }
+}
+
+/** A git-style diff of the change (context of 3 lines), for the approval card and Logs. */
+function diffOf(file: string, before: string, after: string): string {
+  const patch = structuredPatch(basename(file), basename(file), before.replace(/\r\n/g, '\n'), after.replace(/\r\n/g, '\n'), '', '', { context: 3 })
+  const body = patch.hunks.map((h) => [`@@ -${h.oldStart},${h.oldLines} +${h.newStart},${h.newLines} @@`, ...h.lines].join('\n')).join('\n')
+  return body || '(no change)'
 }
 
 export const editFile = defineTool({
   name: 'edit_file',
   description:
-    "Change a text file in the user's writable folders, either by exact find/replace edits (each find must appear once) or by giving the whole new content. The old version is backed up and can be undone.",
+    "Change a text file in the user's writable folders. Read it with read_file first. Prefer exact find/replace edits (each find must appear once, include enough surrounding text); give the whole new content only to rewrite most of the file. The old version is backed up and can be undone.",
   input: {
     path: z.string(),
     edits: z.array(z.object({ find: z.string().min(1), replace: z.string() })).optional(),
@@ -71,22 +93,30 @@ export const editFile = defineTool({
   },
   risk: 'destructive',
   available,
+  previewKind: 'diff',
   describe: ({ path }) => `Edit ${basename(path)}`,
   preview: ({ path, edits, content }) => {
     const file = writablePath(path, 'existing-file')
-    editedContent(file, edits, content)
-    if (content !== undefined) {
-      const before = readFileSync(file, 'utf8').split('\n').length
-      return `${show(file)}\nReplace the whole file (${plural(before, 'line')} now, ${plural(content.split('\n').length, 'line')} after):\n\n${clip(content, 800)}`
-    }
-    return `${show(file)}\n\n${edits!.map((e) => `Replace:\n${clip(e.find)}\nWith:\n${clip(e.replace)}`).join('\n\n')}`
+    if (!TEXT_TYPES.has(extname(file).toLowerCase())) throw new Error(`Only text files can be edited (not ${extname(file) || 'this type'})`)
+    assertReadAndUnchanged(file)
+    const { before, after } = editedContent(file, edits, content)
+    const was = before.split('\n').length
+    const kept = after.split('\n').length
+    const warn = kept < was / 2 && was > 4 ? `Careful: this leaves ${kept} of ${was} lines.\n` : ''
+    return `${warn}${show(file)}\n${diffOf(file, before, after)}`
   },
   run: async ({ path, edits, content }) => {
     const file = writablePath(path, 'existing-file')
-    const next = editedContent(file, edits, content)
-    if (Buffer.byteLength(next) > MAX_TEXT) throw new Error('Result is over 5 MB')
-    recordFileOps(`Edited ${show(file)}`, [editText(file, next)])
-    return `Edited ${file}`
+    if (!TEXT_TYPES.has(extname(file).toLowerCase())) throw new Error(`Only text files can be edited (not ${extname(file) || 'this type'})`)
+    assertReadAndUnchanged(file)
+    const { before, after } = editedContent(file, edits, content)
+    if (Buffer.byteLength(after) > MAX_TEXT) throw new Error('Result is over 5 MB')
+    if (after === before) return `No change: ${basename(file)} already reads that way.`
+    const diff = diffOf(file, before, after)
+    recordFileOps(`Edited ${show(file)}`, [editText(file, after, diff.slice(0, 20_000))])
+    // Orbit knows the new content, so a follow-up edit doesn't need another read.
+    noteRead(file)
+    return `Edited ${file}:\n${diff.slice(0, 4000)}`
   }
 })
 

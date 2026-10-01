@@ -31,6 +31,8 @@ export type ApprovalRequest = {
   input: unknown
   /** Readable detail shown instead of the raw input. */
   preview?: string
+  /** 'diff': preview is a unified diff (lines starting with + or -). */
+  previewKind?: 'diff'
   /** Offer "Allow for this chat" (not for workflow reviews). */
   allowChat?: boolean
 }

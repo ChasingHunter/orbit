@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { clearReads } from './readTracker'
 import { activeProject, getProject, searchProject } from './projects'
 import { randomUUID } from 'node:crypto'
 import type { AgentEvent, ContextItem, ImageInput } from '@shared/types'
@@ -288,5 +289,7 @@ export class Conversation {
     this.quickChat = false
     this.chatModel = undefined
     this.nudged = false
+    // A new chat has read nothing yet: edits need a fresh read_file.
+    clearReads()
   }
 }

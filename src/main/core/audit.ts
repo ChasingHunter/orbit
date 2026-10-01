@@ -19,16 +19,20 @@ export type AuditEntry = {
 const MAX_STRING = 2000
 const ROTATE_AT = 10 * 1024 * 1024
 
+/** Fields that hold secrets are never written to the log, whatever tool they come from. */
+const SECRET_KEY = /pass(word|code|phrase)?$|^pin$|token|secret|api_?key|credential|cvv|cvc|card_?number/i
+
 function clipDeep(v: unknown, depth = 0): unknown {
   if (typeof v === 'string') return v.length > MAX_STRING ? `${v.slice(0, MAX_STRING)}…[${v.length - MAX_STRING} more characters]` : v
   if (depth > 6 || v === null || typeof v !== 'object') return v
   if (Array.isArray(v)) return v.slice(0, 200).map((x) => clipDeep(x, depth + 1))
-  return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clipDeep(x, depth + 1)]))
+  return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, SECRET_KEY.test(k) && typeof x === 'string' && x ? '[hidden]' : clipDeep(x, depth + 1)]))
 }
 
 let writes = 0
 export function audit(entry: Omit<AuditEntry, 'at'>): void {
   const line = JSON.stringify({ at: new Date().toISOString(), ...entry, input: clipDeep(entry.input), output: entry.output?.slice(0, MAX_STRING) })
+  // (Tools that can see secrets in plain fields, like typing into a password box, hide them before this via auditInput.)
   // Checking the size every 50 writes keeps this cheap.
   if (++writes % 50 === 0) rotateAudit()
   appendFile(paths.audit, line + '\n').catch((err) => console.error('[audit] write failed', err))
