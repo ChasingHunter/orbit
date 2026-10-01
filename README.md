@@ -45,7 +45,7 @@ If you had text selected when you opened the bar, it shows up as a small chip ab
 
 When you have text selected, a row of quick actions shows up: Explain, Summarise, Fix grammar, Translate and Reply. Fix grammar puts the corrected text straight back where your selection was; Reply copies a draft to your clipboard. You can change the list in `settings.json`.
 
-For any other answer that rewrites your selection, click "Paste back". Your clipboard is put back the way it was afterwards (if another app left something on it Orbit can't read, that part is skipped rather than blocking the paste). If the paste itself fails, the text stays on your clipboard and a notification tells you to press Ctrl+V.
+For any other answer that rewrites your selection, click "Paste back". Your clipboard is put back the way it was afterwards. If the paste ever fails, the text stays on your clipboard so you can press Ctrl+V yourself.
 
 You can also attach files: drag them onto the bar, paste them, or click the paperclip. PDFs, Word, Excel, PowerPoint, images and any text or code file work. Orbit keeps a copy for 30 days so follow-up questions can still read it, and only the first 20,000 characters go along with your question (the model reads on if it needs more). Images are shrunk to the size Claude uses anyway, so a big photo doesn't cost more tokens than it has to.
 
@@ -164,7 +164,7 @@ Your folders are read-only unless you say otherwise, and workflow code runs in a
 
 ## Disk space
 
-Logs, backups and the undo history would grow forever if nothing cleaned them up, so Orbit does it once a day: tool logs are kept 90 days (about 70 MB at most), workflow run history 30 days and 3,000 runs, backups of changed files 30 days and 2 GB (or a tenth of your free space, if that's less), and attachment copies 30 days and 1 GB. Your chats, memories, files you kept and files workflows made are never deleted automatically (temporary chat files are, as described above); you can set chats to expire in `settings.json` (`storage.chatDays`). Orbit also stops saving backups, attachments and new files when that would leave less than 1 GB free, and warns you when the disk drops under 5 GB. The Usage page shows what each part takes and has a "Clean up now" button.
+Orbit cleans up after itself once a day, so its logs, backups and attachment copies can't slowly fill your disk. Your chats, memories, the files you kept and the files workflows made are never deleted automatically. If you'd like old chats to go too, set `storage.chatDays` in `settings.json`. Orbit won't save new backups, attachments or files when your disk is down to its last 1 GB, and it warns you before that. The Usage page shows how much each part takes, with a "Clean up now" button.
 
 ## How many tokens it uses
 
