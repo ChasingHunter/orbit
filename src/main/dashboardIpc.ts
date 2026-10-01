@@ -1,6 +1,6 @@
 import { dialog, ipcMain, shell } from 'electron'
 import { version } from '../../package.json'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, mkdirSync } from 'node:fs'
 import type { DashSettings, MemoryKind } from '@shared/dash'
 import { dataDir, paths } from './paths'
 import { settings } from './settingsStore'
@@ -25,6 +25,7 @@ import { scheduler } from './core/scheduler'
 import type { PermissionsInfo, UsageInfo, WorkflowInfo } from '@shared/dash'
 import { snapshotBytes } from './core/userFiles'
 import { runCleanup, storageReport } from './core/housekeeping'
+import { claudeSkillsDir, listSkills, orbitSkillsDir } from './core/skills'
 import { bundledClaudeVersion, findInstalledClaude, installedClaudeVersion, openUrl, runChecks, signInToClaude } from './system/health'
 import { levelDefault, policyOf } from './core/permissions'
 import { backgroundTokensToday, usageSummary } from './core/usage'
@@ -226,6 +227,26 @@ export function registerDashboardIpc(): void {
     }
   })
 
+  ipcMain.handle('dash:skills', () => ({
+    skills: listSkills().map(({ key, name, description, source, enabled }) => ({ key, name, description, source, enabled })),
+    orbitDir: orbitSkillsDir(),
+    claudeDir: claudeSkillsDir()
+  }))
+  ipcMain.handle('dash:skill-enabled', (_e, key: string, on: boolean) =>
+    settings.update((d) => {
+      const list = key.startsWith('claude:') ? d.skills.onFromClaude : d.skills.off
+      // Orbit's skills are listed when off, Claude's when on.
+      const listed = key.startsWith('claude:') ? on : !on
+      const i = list.indexOf(key)
+      if (listed && i < 0) list.push(key)
+      if (!listed && i >= 0) list.splice(i, 1)
+    })
+  )
+  ipcMain.handle('dash:skills-folder', (_e, which: 'orbit' | 'claude') => {
+    const dir = which === 'orbit' ? orbitSkillsDir() : claudeSkillsDir()
+    mkdirSync(dir, { recursive: true })
+    void shell.openPath(dir)
+  })
   ipcMain.handle('dash:storage', () => storageReport())
   ipcMain.handle('dash:cleanup', async () => {
     await runCleanup()

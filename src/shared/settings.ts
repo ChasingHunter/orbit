@@ -161,6 +161,14 @@ export const Settings = z.object({
     })
     .prefault({}),
 
+  /** Which skills are on: Orbit's own unless listed in off; Claude's only if listed in onFromClaude. Keys are "source:name". */
+  skills: z
+    .object({
+      off: z.array(z.string()).default([]),
+      onFromClaude: z.array(z.string()).default([])
+    })
+    .prefault({}),
+
   /** How long Orbit keeps its own logs and records. Your chats, memories and files aren't touched. */
   storage: z
     .object({

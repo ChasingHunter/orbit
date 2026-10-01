@@ -108,6 +108,8 @@ export type TemplateInfo = { id: string; title: string; summary: string; install
 
 export type AuditItem = { at: string; tool: string; decision: 'allowed' | 'approved' | 'denied' | 'blocked'; ok?: boolean; input: unknown; output?: string }
 
+export type SkillInfo = { key: string; name: string; description: string; source: 'orbit' | 'claude'; enabled: boolean }
+
 export type StorageInfo = {
   items: { id: string; label: string; bytes: number; limit: string }[]
   total: number
@@ -149,7 +151,7 @@ export type PermissionsInfo = {
   }[]
 }
 
-export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'usage' | 'logs' | 'permissions' | 'setup' | 'settings'
+export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'usage' | 'logs' | 'permissions' | 'skills' | 'setup' | 'settings'
 
 export interface DashApi {
   onChanged(cb: (what: 'integrations' | 'tasks' | 'memory' | 'history' | 'settings' | 'workflows' | 'logs') => void): () => void
@@ -189,6 +191,9 @@ export interface DashApi {
   audit(limit?: number): Promise<AuditItem[]>
   usage(): Promise<UsageInfo>
   storage(): Promise<StorageInfo>
+  skills(): Promise<{ skills: SkillInfo[]; orbitDir: string; claudeDir: string }>
+  setSkillEnabled(key: string, on: boolean): Promise<void>
+  openSkillsFolder(which: 'orbit' | 'claude'): Promise<void>
   cleanup(): Promise<StorageInfo>
   checks(): Promise<SetupCheck[]>
   fixCheck(id: string): Promise<void>

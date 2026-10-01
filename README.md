@@ -107,6 +107,12 @@ Orbit can use a browser for things that need clicking around: checking an order 
 
 It reads pages as text plus a numbered list of buttons and fields rather than taking screenshots, which keeps it cheap. Opening and reading pages just happens. Clicking, typing and pressing keys count as acting on a site, so at the default level each one asks first. Password and card fields, and buttons like Pay, Buy or Checkout, ask every time, even at Full autonomy, and the card hides what's being typed into a password field. The stop hotkey closes the browser.
 
+## Skills
+
+Skills are reusable instructions in the same `SKILL.md` format Claude uses: a folder with a name, a one-line description and the steps, plus any files they need. Drop one into Orbit's skills folder (the Skills page has a button that opens it) and Orbit uses it whenever a task fits. Your Claude skills in `~\.claude\skills` show up there too, read in place rather than copied. They start off, since most are written for Claude Code's own tools; switch on the ones that make sense.
+
+Only the name and description of each skill that's on go along with your messages. The full instructions load when one is used.
+
 ## Reminders and workflows
 
 "Remind me in 30 minutes to stretch" or "remind me every weekday at 9 to check the deploy" sets a desktop notification. It works offline.

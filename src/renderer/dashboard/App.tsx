@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { DashSettings } from '@shared/dash'
-import { BarChart3, Brain, History, ListChecks, Plug, ScrollText, Settings as SettingsIcon, ShieldCheck, Wrench, Workflow, type LucideIcon } from 'lucide-react'
+import { BarChart3, Brain, History, ListChecks, Plug, ScrollText, Settings as SettingsIcon, ShieldCheck, Sparkles, Wrench, Workflow, type LucideIcon } from 'lucide-react'
 import type { DashPage } from '@shared/dash'
 import { dash } from './ui'
 import { TasksPage } from './pages/Tasks'
@@ -12,6 +12,7 @@ import { SettingsPage } from './pages/Settings'
 import { LogsPage } from './pages/Logs'
 import { UsagePage } from './pages/Usage'
 import { PermissionsPage } from './pages/Permissions'
+import { SkillsPage } from './pages/Skills'
 import { SetupPage } from './pages/Setup'
 
 const NAV: { id: DashPage; label: string; icon: LucideIcon }[] = [
@@ -23,6 +24,7 @@ const NAV: { id: DashPage; label: string; icon: LucideIcon }[] = [
   { id: 'usage', label: 'Usage', icon: BarChart3 },
   { id: 'logs', label: 'Logs', icon: ScrollText },
   { id: 'permissions', label: 'Permissions', icon: ShieldCheck },
+  { id: 'skills', label: 'Skills', icon: Sparkles },
   { id: 'setup', label: 'Setup', icon: Wrench },
   { id: 'settings', label: 'Settings', icon: SettingsIcon }
 ]
@@ -89,6 +91,7 @@ export function App(): React.JSX.Element {
           {page === 'usage' && <UsagePage />}
           {page === 'logs' && <LogsPage />}
           {page === 'permissions' && <PermissionsPage />}
+          {page === 'skills' && <SkillsPage />}
           {page === 'setup' && <SetupPage />}
           {page === 'settings' && <SettingsPage />}
         </div>
