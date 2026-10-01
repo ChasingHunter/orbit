@@ -69,6 +69,23 @@ export function registerDashboardIpc(): void {
     }
     await integrations.upsert(preset.id, preset.config, true)
   })
+  ipcMain.handle('dash:add-custom', async (_e, spec: { name: string; url?: string; command?: string; token?: string }) => {
+    const name = spec.name.trim()
+    if (!name) throw new Error('Give it a name')
+    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'custom'
+    if (integrations.states().some((s) => s.id === id)) throw new Error(`There's already an integration called ${name}`)
+    const token = spec.token?.trim()
+    if (token) setSecret(`custom.${id}`, token)
+    if (spec.url?.trim()) {
+      const url = spec.url.trim()
+      if (!/^https:\/\//i.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)[:/]/i.test(url)) throw new Error('Use an https:// address (plain http only for localhost)')
+      await integrations.upsert(id, { type: 'http', name, url, enabled: true, secretHeaders: token ? { Authorization: `Bearer {secret:custom.${id}}` } : {} }, true)
+    } else if (spec.command?.trim()) {
+      // Split like a shell would for simple cases: words, with "quoted parts" kept together.
+      const parts = (spec.command.trim().match(/"[^"]*"|\S+/g) ?? []).map((p) => p.replace(/^"|"$/g, ''))
+      await integrations.upsert(id, { type: 'stdio', name, command: parts[0], args: parts.slice(1), env: {}, secretEnv: token ? { API_KEY: `custom.${id}` } : {}, enabled: true }, true)
+    } else throw new Error('Give it a URL or a command')
+  })
   ipcMain.handle('dash:reconnect', (_e, id: string) => integrations.connect(id, true))
   ipcMain.handle('dash:integration-enabled', (_e, id: string, enabled: boolean) => integrations.setEnabled(id, enabled))
   ipcMain.handle('dash:integration-remove', (_e, id: string) => integrations.remove(id))

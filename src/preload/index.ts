@@ -53,6 +53,7 @@ const dash: DashApi = {
   },
   integrations: () => ipcRenderer.invoke('dash:integrations'),
   connect: (presetId, secrets) => ipcRenderer.invoke('dash:connect', presetId, secrets),
+  addCustomIntegration: (spec) => ipcRenderer.invoke('dash:add-custom', spec),
   reconnect: (id) => ipcRenderer.invoke('dash:reconnect', id),
   setIntegrationEnabled: (id, enabled) => ipcRenderer.invoke('dash:integration-enabled', id, enabled),
   removeIntegration: (id) => ipcRenderer.invoke('dash:integration-remove', id),

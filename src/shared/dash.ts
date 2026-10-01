@@ -9,6 +9,8 @@ export type IntegrationState = {
   status: IntegrationStatus
   error?: string
   toolCount: number
+  /** Roughly what its tools add to every message. */
+  tokens: number
 }
 
 export type PresetInfo = {
@@ -154,6 +156,8 @@ export interface DashApi {
   onNavigate(cb: (page: DashPage) => void): () => void
   integrations(): Promise<{ states: IntegrationState[]; presets: PresetInfo[] }>
   connect(presetId: string, secrets: Record<string, string>): Promise<void>
+  /** Adds a server that isn't in the list: a URL, or a command for a local one. */
+  addCustomIntegration(spec: { name: string; url?: string; command?: string; token?: string }): Promise<void>
   reconnect(id: string): Promise<void>
   setIntegrationEnabled(id: string, enabled: boolean): Promise<void>
   removeIntegration(id: string): Promise<void>

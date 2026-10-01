@@ -63,7 +63,9 @@ class IntegrationManager extends EventEmitter {
       type: l.config.type,
       status: l.status,
       error: l.error,
-      toolCount: l.tools.length
+      toolCount: l.tools.length,
+      // What its tools add to every message, roughly: descriptions and schemas at ~4 characters a token.
+      tokens: Math.round(l.tools.reduce((t, x) => t + (x.description?.length ?? 0) + JSON.stringify(x.inputSchema ?? {}).length + x.name.length, 0) / 4)
     }))
   }
 

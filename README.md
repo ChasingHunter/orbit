@@ -121,11 +121,13 @@ Workflows only run while Orbit is running. If your PC was off at the scheduled t
 
 Open the dashboard and go to Integrations.
 
-Notion is one click: it opens Notion in your browser and you pick which pages Orbit can see.
+About twenty services connect in one click: Notion, Linear, Jira and Confluence, Todoist, ClickUp, monday.com, Airtable, Figma, Canva, Stripe, Zapier and more. Click Connect, sign in to the service in your browser, and that's it. Search the list if you don't see one.
 
 Slack and Google take a few minutes of setup, because neither lets outside apps connect without you creating your own app or OAuth client first. The dashboard walks you through it step by step. Your tokens are encrypted on your PC and never shown to the model.
 
-Anything that works over MCP can be added the same way by editing `integrations.json`. If a service isn't connected and you ask for something that needs it, Orbit tells you instead of pretending.
+For anything else that speaks MCP, use "Add your own" at the bottom: paste the address it's hosted at, or the command that runs it on your PC. If a service isn't connected and you ask for something that needs it, Orbit tells you instead of pretending.
+
+Every connected service sends its list of tools along with each message, so each one costs some tokens every time you ask something. The card shows roughly how many. Turn off the ones you aren't using.
 
 ## Choosing a model
 
