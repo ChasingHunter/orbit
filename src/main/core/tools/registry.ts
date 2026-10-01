@@ -85,6 +85,27 @@ async function invoke(tool: OrbitTool, rawInput: unknown, opts: CallOptions): Pr
   }
 }
 
+/**
+ * Permission check for a tool that runs inside the model provider rather than through Orbit
+ * (Claude's own web search). Same policy and approval card as Orbit's tool of that name; the
+ * caller audits the result. Returns how it was allowed, or null if denied (already audited).
+ */
+export async function gateProviderTool(name: string, input: unknown, signal: AbortSignal): Promise<'allowed' | 'approved' | null> {
+  const tool = allTools().find((t) => t.name === name)
+  if (!tool || policyFor(tool) === 'never') {
+    audit({ tool: name, input, decision: 'blocked' })
+    return null
+  }
+  if (policyFor(tool) !== 'ask' || isAllowedThisChat(name)) return 'allowed'
+  const answer = await requestDecision({ tool: name, title: tool.describe?.(input as never) ?? name, input, allowChat: true }, signal)
+  if (answer === 'chat') allowForThisChat(name)
+  if (answer === 'deny') {
+    audit({ tool: name, input, decision: 'denied' })
+    return null
+  }
+  return 'approved'
+}
+
 /** Calls one tool by name outside a model conversation (used by workflows). */
 export function callTool(name: string, input: unknown, opts: CallOptions): Promise<ToolResult> {
   const tool = allTools().find((t) => t.name === normalizeToolName(name))

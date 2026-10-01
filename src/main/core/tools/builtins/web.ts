@@ -7,6 +7,11 @@ import { defineTool } from '../types'
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Orbit/0.1'
 
+/** A Brave or Tavily key is saved. Without one, Claude models use Claude's own search instead. */
+export function hasSearchKey(): boolean {
+  return !!getSecret(settings.current.tools.webSearch.provider)
+}
+
 export const webSearch = defineTool({
   name: 'web_search',
   description: 'Search the web. Returns titles, URLs and snippets. Use web_fetch to read a result in full.',
@@ -19,7 +24,7 @@ export const webSearch = defineTool({
     const provider = settings.current.tools.webSearch.provider
     const key = getSecret(provider)
     if (!key) {
-      return `web_search is not configured: no ${provider} API key. Tell the user to run "/key ${provider} <key>" in the bar.`
+      return `web_search needs a ${provider} API key here (Claude models in a chat search without one, but this model or workflow step can't). Tell the user to add a free key on the Setup page.`
     }
     if (provider === 'brave') {
       const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${count}`

@@ -7,6 +7,9 @@ import {
   type SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
 import { claudeExecutable } from '../system/health'
+import { hasSearchKey } from '../core/tools/builtins/web'
+import { gateProviderTool } from '../core/tools/registry'
+import { audit } from '../core/audit'
 import type { AgentEvent } from '@shared/types'
 import { paths } from '../paths'
 import { settings } from '../settingsStore'
@@ -39,18 +42,24 @@ class ClaudeSession implements RunnerSession {
 
   constructor(private opts: SessionOptions) {}
 
+  /** Claude's own web search, used in place of web_search when no Brave/Tavily key is saved. */
+  private nativeSearch = false
+  private searches = new Map<string, { input: unknown; decision: 'allowed' | 'approved' }>()
+
   private start(): Query {
+    this.nativeSearch = this.opts.tools.some((t) => t.name === 'web_search') && !hasSearchKey()
+    const own = this.nativeSearch ? this.opts.tools.filter((t) => t.name !== 'web_search') : this.opts.tools
     const server = createSdkMcpServer({
       name: SERVER,
       version: '0.1.0',
-      tools: this.opts.tools.map((t) =>
+      tools: own.map((t) =>
         tool(t.name, t.description, t.input, async (args, _extra) => {
           const r = await t.call(args, AbortSignal.timeout(10 * 60_000))
           return { content: [{ type: 'text', text: r.output }], isError: r.isError }
         })
       )
     })
-    const allowed = this.opts.tools.map((t) => `mcp__${SERVER}__${t.name}`)
+    const allowed = own.map((t) => `mcp__${SERVER}__${t.name}`)
 
     // Never let an inherited API key silently switch billing away from the subscription.
     const { ANTHROPIC_API_KEY: _k, ANTHROPIC_AUTH_TOKEN: _t, ...env } = process.env
@@ -62,12 +71,20 @@ class ClaudeSession implements RunnerSession {
         ...(settings.current.models.effort !== 'auto' ? { effort: settings.current.models.effort } : {}),
         pathToClaudeCodeExecutable: claudeExecutable(),
         systemPrompt: this.opts.system,
-        tools: [], // no built-in tools
+        // No built-in tools, except Claude's web search when there's no search key (it runs on
+        // the subscription). It goes through the same permission check as Orbit's web_search.
+        tools: this.nativeSearch ? ['WebSearch'] : [],
         // Single gate: Orbit tools pass (Orbit's own executor handles approvals), anything else is denied.
-        canUseTool: async (name) =>
-          allowed.includes(name)
-            ? { behavior: 'allow' }
-            : { behavior: 'deny', message: 'Only Orbit tools are available.' },
+        canUseTool: async (name, input, { signal, toolUseID }) => {
+          if (allowed.includes(name)) return { behavior: 'allow', updatedInput: input }
+          if (name === 'WebSearch' && this.nativeSearch) {
+            const decision = await gateProviderTool('web_search', input, signal)
+            if (!decision) return { behavior: 'deny', message: 'The user turned web search off or declined it.' }
+            if (toolUseID) this.searches.set(toolUseID, { input, decision })
+            return { behavior: 'allow', updatedInput: input }
+          }
+          return { behavior: 'deny', message: 'Only Orbit tools are available.' }
+        },
         mcpServers: { [SERVER]: server },
         strictMcpConfig: true,
         settingSources: [],
@@ -132,7 +149,25 @@ class ClaudeSession implements RunnerSession {
       }
       case 'assistant':
         if (msg.error) turn.push({ type: 'error', message: assistantError(msg.error) })
+        // Claude's own search doesn't pass through Orbit's tool wrapper, so report it here.
+        if (!msg.parent_tool_use_id) {
+          for (const block of msg.message.content) {
+            if (block.type === 'tool_use' && block.name === 'WebSearch') turn.push({ type: 'tool-call', id: block.id, name: 'web_search', input: block.input })
+          }
+        }
         return
+      case 'user': {
+        if (msg.parent_tool_use_id || typeof msg.message.content === 'string') return
+        for (const block of msg.message.content) {
+          if (block.type !== 'tool_result' || !this.searches.has(block.tool_use_id)) continue
+          const { input, decision } = this.searches.get(block.tool_use_id)!
+          this.searches.delete(block.tool_use_id)
+          const output = typeof block.content === 'string' ? block.content : (block.content ?? []).map((c) => ('text' in c ? c.text : '')).join('\n')
+          audit({ tool: 'web_search', input, decision, ok: !block.is_error, output })
+          turn.push({ type: 'tool-result', id: block.tool_use_id, name: 'web_search', output, isError: !!block.is_error })
+        }
+        return
+      }
       case 'rate_limit_event': {
         const info = msg.rate_limit_info
         if (info.status === 'rejected') {
