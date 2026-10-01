@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS memories (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
-CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(text, content='memories', content_rowid='id');
+CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(text, content='memories', content_rowid='id', tokenize='porter unicode61');
 CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
   INSERT INTO memories_fts(rowid, text) VALUES (new.id, new.text);
 END;
@@ -71,6 +71,12 @@ export function getDb(): DatabaseSync {
         // already there
       }
     }
+    // Before 0.11 the memory index matched exact words only ("fish" missed "fishes"). Rebuild it
+    // with stemming once; the triggers keep using it by name.
+    const fts = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'memories_fts'").get() as { sql: string } | undefined
+    if (fts && !/porter/.test(fts.sql)) {
+      db.exec("DROP TABLE memories_fts; CREATE VIRTUAL TABLE memories_fts USING fts5(text, content='memories', content_rowid='id', tokenize='porter unicode61'); INSERT INTO memories_fts(memories_fts) VALUES('rebuild');")
+    }
   }
   return db
 }
@@ -93,8 +99,12 @@ export function ftsQuery(text: string): string | undefined {
     .join(' OR ')
 }
 
+/**
+ * Words too common to search on. Kept to real function words: things like "like", "want" or "need"
+ * carry meaning in a memory ("I like fishes"), and dropping them made "what do I like?" find nothing.
+ */
 const STOP = new Set(
-  'the and for are but not you all any can had her was one our out has him his how its may new now see who did get let put say she too use what when where which while with this that from they them then than there these those have will would could should about into your just like some more most very also been were being what\'s whats tell show give make want need please'.split(
+  'the and for are but not you all any can had her was one our out has him his how its may now see who did get she too what when where which while with this that from they them then than there these those have will would could should about into your just some more most very also been were being what\'s whats please'.split(
     ' '
   )
 )

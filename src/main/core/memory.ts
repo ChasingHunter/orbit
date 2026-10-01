@@ -11,6 +11,8 @@ export type Memory = {
   private: boolean
   created_at: string
   updated_at: string
+  /** Set when it was saved while a project was active; it then only applies there. */
+  project_id?: string | null
 }
 
 type Row = Omit<Memory, 'private'> & { private: number }
@@ -70,7 +72,14 @@ export function getMemory(id: number): Memory | undefined {
 /** Best matches for free text, most relevant first. */
 export function searchMemories(text: string, limit = 8, includePrivate = true): Memory[] {
   const q = ftsQuery(text)
-  if (!q) return []
+  if (!q) {
+    // Nothing searchable in the words: fall back to a plain substring match.
+    const t = text.trim().toLowerCase()
+    if (t.length < 2) return []
+    return listMemories()
+      .filter((m) => (includePrivate || !m.private) && (!m.project_id || m.project_id === activeProject()) && m.text.toLowerCase().includes(t))
+      .slice(0, limit)
+  }
   const rows = getDb()
     .prepare(
       `SELECT m.* FROM memories_fts f JOIN memories m ON m.id = f.rowid
@@ -80,6 +89,37 @@ export function searchMemories(text: string, limit = 8, includePrivate = true): 
     )
     .all(q, activeProject() ?? '', limit) as Row[]
   return rows.map(toMemory)
+}
+
+/** About 1,500 tokens of memories always go in the model's instructions; more than that is searched. */
+const PROMPT_CHARS = 6000
+const KIND_ORDER: Record<string, number> = { profile: 0, preference: 1, person: 2, project: 3, note: 4 }
+
+/**
+ * Saved memories for the model's standing instructions, the way ChatGPT and Claude carry them: the
+ * model always knows them, whatever words the question uses. Global ones plus the active project's,
+ * profile and preferences first, newest first within a kind. Private ones only go to local models.
+ * Returns what fits and whether some were left out (those are still found by search and recall).
+ */
+export function memoriesForPrompt(includePrivate: boolean): { memories: Memory[]; more: number } {
+  const all = listMemories()
+    .filter((m) => (includePrivate || !m.private) && (!m.project_id || m.project_id === activeProject()))
+    .sort((a, b) => (KIND_ORDER[a.kind] ?? 9) - (KIND_ORDER[b.kind] ?? 9) || b.updated_at.localeCompare(a.updated_at))
+  const out: Memory[] = []
+  let used = 0
+  for (const m of all) {
+    if (used + m.text.length + 12 > PROMPT_CHARS) break
+    out.push(m)
+    used += m.text.length + 12
+  }
+  return { memories: out, more: all.length - out.length }
+}
+
+/** Every memory of one kind, or all of them, for recall's "list" mode. */
+export function memoriesByKind(kind?: string, limit = 50): Memory[] {
+  return listMemories()
+    .filter((m) => (!kind || m.kind === kind) && (!m.project_id || m.project_id === activeProject()))
+    .slice(0, limit)
 }
 
 export function listMemories(): Memory[] {

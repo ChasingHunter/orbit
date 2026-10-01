@@ -88,6 +88,15 @@ export function App(): React.JSX.Element {
   const [projects, setProjects] = useState<{ current: string; options: { id: string; name: string }[] }>({ current: '', options: [] })
   const loadProjects = (): void => void api.projects().then(setProjects)
   useEffect(() => {
+    // Projects or models added in the dashboard show up as soon as you come back to the bar.
+    const refresh = (): void => {
+      loadModels()
+      loadProjects()
+    }
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [])
+  useEffect(() => {
     // The picker's Cancel button fires a native "cancel" event that React doesn't expose.
     const el = fileRef.current
     const onCancel = (): void => {

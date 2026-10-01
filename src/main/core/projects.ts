@@ -16,7 +16,7 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, name TEXT NOT NULL, instructions TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS project_paths (project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, path TEXT NOT NULL, PRIMARY KEY (project_id, path));
 CREATE TABLE IF NOT EXISTS project_files (project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, path TEXT NOT NULL, mtime REAL NOT NULL, PRIMARY KEY (project_id, path));
-CREATE VIRTUAL TABLE IF NOT EXISTS project_chunks USING fts5(text, path UNINDEXED, project_id UNINDEXED);
+CREATE VIRTUAL TABLE IF NOT EXISTS project_chunks USING fts5(text, path UNINDEXED, project_id UNINDEXED, tokenize='porter unicode61');
 `
 const CHUNK = 1500
 const OVERLAP = 200
@@ -28,6 +28,10 @@ let ready = false
 function db(): ReturnType<typeof getDb> {
   const d = getDb()
   if (!ready) {
+    // An index from before stemming is rebuilt: dropping it and the file list makes every pinned
+    // file get indexed again on the next use.
+    const old = d.prepare("SELECT sql FROM sqlite_master WHERE name = 'project_chunks'").get() as { sql: string } | undefined
+    if (old && !/porter/.test(old.sql)) d.exec('DROP TABLE project_chunks; DELETE FROM project_files;')
     d.exec(SCHEMA)
     ready = true
   }
@@ -145,6 +149,11 @@ export function searchProject(id: string, text: string, limit = 4): { path: stri
   return db()
     .prepare('SELECT path, text FROM project_chunks WHERE project_chunks MATCH ? AND project_id = ? ORDER BY bm25(project_chunks) LIMIT ?')
     .all(q, id, limit) as { path: string; text: string }[]
+}
+
+/** The indexed files of a project, for the model's instructions. */
+export function projectFiles(id: string): string[] {
+  return (db().prepare('SELECT path FROM project_files WHERE project_id = ? ORDER BY path').all(id) as { path: string }[]).map((r) => r.path)
 }
 
 /** Folders and files read_file may read while a project is active. */

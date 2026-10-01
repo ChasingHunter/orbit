@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { getMemory, MEMORY_KINDS, searchMemories } from '../../memory'
+import { getMemory, MEMORY_KINDS, memoriesByKind, searchMemories } from '../../memory'
 import { addMemoryTracked, deleteMemoryTracked } from '../../changes'
 import { defineTool } from '../types'
 
@@ -20,11 +20,13 @@ export const remember = defineTool({
 
 export const recall = defineTool({
   name: 'recall',
-  description: "Search the user's saved memories (people, preferences, projects, notes).",
-  input: { query: z.string().describe('Words to search for, e.g. "Sam email"') },
+  description: "Search the user's saved memories, or list them: query \"all\" lists everything, a kind (profile, preference, person, project, note) lists that kind.",
+  input: { query: z.string().describe('Words to search for, e.g. "Sam email", or "all", or a kind like "preference"') },
   risk: 'read',
   run: async ({ query }) => {
-    const found = searchMemories(query, 10)
+    const q = query.trim().toLowerCase().replace(/s$/, '')
+    const found =
+      q === 'all' || q === '*' || q === '' ? memoriesByKind() : (MEMORY_KINDS as readonly string[]).includes(q) ? memoriesByKind(q) : searchMemories(query, 10)
     if (!found.length) return 'No matching memories.'
     return found.map((m) => `#${m.id} [${m.kind}] ${m.text}`).join('\n')
   }
