@@ -37,6 +37,8 @@ import { attachData, attachPaths } from './core/attachments'
 import { runCleanup, startHousekeeping, storageReport } from './core/housekeeping'
 import * as made from './core/madeFiles'
 import { registerPythonScheme } from './python/sandbox'
+import { openPage, registerPageScheme } from './windows/page'
+import { setPageOpener } from './core/tools/builtins/files'
 import { browserOpen, closeBrowser } from './browser/session'
 import { activeProject, listProjects, setActiveProject } from './core/projects'
 import * as projectsModule from './core/projects'
@@ -50,6 +52,7 @@ import { applyStartWithWindows, startAutoUpdates } from './os/system'
 ensureDataDirs()
 installLogging((message) => sendToBar({ type: 'notice', level: 'error', text: `Internal error: ${message}` }))
 registerPythonScheme()
+registerPageScheme()
 
 // Keep Chromium caches out of the user-facing data folder.
 app.setPath('userData', join(dataDir, 'chromium'))
@@ -310,7 +313,9 @@ function registerIpc(): void {
     if (!full || !existsSync(full)) return { path, state: { state: 'gone' } }
     if (action === 'open') {
       made.markOpened(full)
-      void shell.openPath(full)
+      // Pages open in Orbit's locked-down page window, not the default browser.
+      if (/\.html$/i.test(full)) openPage(full)
+      else void shell.openPath(full)
     } else if (action === 'reveal') shell.showItemInFolder(full)
     else if (action === 'keep') full = made.keep(full)
     else if (action === 'save') {
@@ -334,6 +339,10 @@ function registerIpc(): void {
 app.whenReady().then(() => {
   ensureDataDirs()
   startHousekeeping()
+  // Tests check pages through the hook instead of popping windows up on the user's screen.
+  setPageOpener((p) => {
+    if (!process.env.ORBIT_E2E) openPage(p)
+  })
   settings.load()
   settings.watch()
   settings.on('change', () => {
@@ -389,7 +398,7 @@ app.whenReady().then(() => {
     // Test hook for scripts/e2e.ts; never set in normal runs.
     Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, runChecks, speaker, recentChanges, undoChange, runCleanup, storageReport,
       measureTools: () => runnableTools(() => []).map((t) => ({ name: t.name, chars: t.description.length + JSON.stringify(z.toJSONSchema(z.object(t.input))).length })),
-      made, snapshotClipboard, onPanic, browserOpen, projects: projectsModule,
+      made, snapshotClipboard, onPanic, browserOpen, projects: projectsModule, openPage,
       callTool: (name: string, input: unknown, source?: 'chat' | 'workflow') => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [], source }) } })
     return
   }

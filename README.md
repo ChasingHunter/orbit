@@ -95,6 +95,8 @@ Orbit won't create or rename files to types that run when you open them (.exe, .
 
 Orbit can also make Word, Excel, PowerPoint and PDF files ("turn this into a one-page PDF", "put these numbers in a spreadsheet with totals"). They never overwrite anything (a second report.docx becomes report (2).docx), and the answer shows the file with Open, Save as…, Keep and Show in folder buttons.
 
+It can also make pages: a chart of your numbers, a little calculator, a dashboard, a visual explainer. A page opens in its own window, where its scripts run but it can't reach the internet or anything on your PC, and charts work offline. The page is an ordinary .html file, so Save as… gives you something you can share.
+
 Like files Claude generates, the ones Orbit makes while you chat are temporary until you want them. Save as… copies one wherever you like (Downloads by default), and Keep moves it into Orbit's files folder for good. Temporary files go to the Recycle Bin once nobody has opened them for 14 days, 3 days after you saved a copy elsewhere, or when there are more than 2 GB of them (least recently used first, nothing under a day old). Files a workflow makes are always kept, since workflows often come back to them. Spreadsheet formulas stay real formulas. Ask it to copy one into a writable folder if you want it somewhere else.
 
 ## Running code

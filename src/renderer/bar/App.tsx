@@ -670,7 +670,7 @@ function Chip({ item, onRemove }: { item: ContextItem; onRemove: () => void }): 
   )
 }
 
-const MAKES_FILES = new Set(['make_file', 'run_python'])
+const MAKES_FILES = new Set(['make_file', 'run_python', 'make_page'])
 
 function MadeFile({ path: initial }: { path: string }): React.JSX.Element {
   const [path, setPath] = useState(initial)

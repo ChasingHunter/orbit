@@ -95,3 +95,31 @@ export function saveMade(name: string, data: Buffer, source: 'chat' | 'workflow'
   trackMade(saved)
   return `Saved ${saved}\n(Temporary: the user can keep it or save a copy from the chat; otherwise it's cleaned up after ${TEMP_DAYS} days unused.)`
 }
+
+export const makePage = defineTool({
+  name: 'make_page',
+  description:
+    "Make an interactive HTML page (a chart, calculator, small tool, dashboard or visual explainer) and open it for the user. One self-contained file: inline CSS and JS, no internet (it's blocked). For charts load <script src=\"orbit-page://lib/chart.js\"></script> (Chart.js 4).",
+  input: {
+    name: z.string().describe('File name, e.g. sales-chart'),
+    html: z.string().describe('The whole HTML document')
+  },
+  risk: 'local',
+  describe: ({ name }) => `Make page ${name}`,
+  run: async ({ name, html }, { source }) => {
+    const base = name.replace(/\.html?$/i, '').replace(/[<>:"/\\|?*\x00-\x1f]/g, '-').trim() || 'page'
+    const out = saveMade(`${base}.html`, Buffer.from(html, 'utf8'), source)
+    const path = out.match(/^Saved (.+)$/m)?.[1]
+    if (path && source === 'chat') openPageSoon(path)
+    return `${out}\nIt's open in its own window; the user can reopen it from the chat.`
+  }
+})
+
+let opener: ((path: string) => void) | undefined
+/** The window module registers itself here (tools can't import Electron windows directly). */
+export function setPageOpener(fn: (path: string) => void): void {
+  opener = fn
+}
+function openPageSoon(path: string): void {
+  opener?.(path)
+}

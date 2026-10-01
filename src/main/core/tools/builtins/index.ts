@@ -7,7 +7,7 @@ import { cancelReminder, listReminders, setReminder } from './reminders'
 import { createWorkflow, deleteWorkflow, listWorkflows, runWorkflow, workflowGuide } from './workflows'
 import { webFetch, webSearch } from './web'
 import { readFeed } from './feeds'
-import { makeFile, readSavedFile, saveFile } from './files'
+import { makeFile, makePage, readSavedFile, saveFile } from './files'
 import { listFolder, readFile } from './folders'
 import { askUserTool } from './ask'
 import { suggestMemory } from './suggest'
@@ -18,4 +18,4 @@ import { browserAct, browserLook } from './browser'
 import { useSkill } from './skills'
 import { searchProjectTool } from './project'
 
-export const builtinTools = [webSearch, webFetch, notify, getContext, remember, recall, forget, listIntegrations, startBackgroundTask, spawnAgents, setReminder, listReminders, cancelReminder, workflowGuide, createWorkflow, listWorkflows, runWorkflow, deleteWorkflow, readFeed, saveFile, readSavedFile, makeFile, listFolder, readFile, askUserTool, suggestMemory, listChanges, undoChangeTool, createFile, editFile, moveFiles, deleteFiles, copyFile, runPythonTool, runCommand, browserLook, browserAct, useSkill, deepResearch, searchProjectTool] as unknown as OrbitTool[]
+export const builtinTools = [webSearch, webFetch, notify, getContext, remember, recall, forget, listIntegrations, startBackgroundTask, spawnAgents, setReminder, listReminders, cancelReminder, workflowGuide, createWorkflow, listWorkflows, runWorkflow, deleteWorkflow, readFeed, saveFile, readSavedFile, makeFile, listFolder, readFile, askUserTool, suggestMemory, listChanges, undoChangeTool, createFile, editFile, moveFiles, deleteFiles, copyFile, runPythonTool, runCommand, browserLook, browserAct, useSkill, deepResearch, searchProjectTool, makePage] as unknown as OrbitTool[]
