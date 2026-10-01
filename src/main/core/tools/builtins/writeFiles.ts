@@ -30,20 +30,29 @@ function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`
 }
 
+/** With ifExists "number", the first free "name (n).ext" next to an existing file. */
+function freeName(path: string, ifExists?: 'fail' | 'number'): string {
+  if (ifExists !== 'number' || !existsSync(path)) return path
+  const ext = extname(path)
+  const stem = path.slice(0, path.length - ext.length)
+  for (let n = 2; ; n++) if (!existsSync(`${stem} (${n})${ext}`)) return `${stem} (${n})${ext}`
+}
+
 export const createFile = defineTool({
   name: 'create_file',
   description: "Create a new text file in one of the user's writable folders. Fails if it already exists (use edit_file to change a file).",
   input: {
     path: z.string().describe('Full path, or relative to the first writable folder'),
-    content: z.string()
+    content: z.string(),
+    ifExists: z.enum(['fail', 'number']).optional().describe('number: save as "name (2).ext" instead of failing; good for workflows that may run twice')
   },
   risk: 'local',
   available,
   describe: ({ path }) => `Create ${basename(path)}`,
-  preview: ({ path, content }) => `${show(writablePath(path, 'new-file'))}\n\n${clip(content, 800)}`,
-  run: async ({ path, content }) => {
+  preview: ({ path, content, ifExists }) => `${show(writablePath(freeName(path, ifExists), 'new-file'))}\n\n${clip(content, 800)}`,
+  run: async ({ path, content, ifExists }) => {
     if (Buffer.byteLength(content) > MAX_TEXT) throw new Error('Content is over 5 MB')
-    const target = writablePath(path, 'new-file')
+    const target = writablePath(freeName(path, ifExists), 'new-file')
     recordFileOps(`Created ${show(target)}`, [createText(target, content)])
     return `Created ${target}`
   }

@@ -43,7 +43,7 @@ type CallOptions = {
 /** Validation, policy, approval and audit around a single tool call. */
 async function invoke(tool: OrbitTool, rawInput: unknown, opts: CallOptions): Promise<ToolResult> {
   if (policyFor(tool) === 'never') return { output: `${tool.name} is turned off in settings.`, isError: true }
-  const parsed = z.object(tool.input).safeParse(rawInput)
+  const parsed = parseArgs(tool, rawInput)
   if (!parsed.success) return { output: `Invalid input: ${parsed.error.message}`, isError: true }
   const input = parsed.data
 
@@ -107,6 +107,28 @@ export async function gateProviderTool(name: string, input: unknown, signal: Abo
     return null
   }
   return 'approved'
+}
+
+/**
+ * Parses a tool's input, fixing the obvious slips first (as n8n does): a number or true/false
+ * written as text, like limit: "15", becomes 15. Anything else that doesn't fit is still an error.
+ */
+export function parseArgs(tool: OrbitTool, raw: unknown): ReturnType<ReturnType<typeof z.object>['safeParse']> {
+  const schema = z.object(tool.input)
+  const first = schema.safeParse(raw)
+  if (first.success || !raw || typeof raw !== 'object') return first
+  const fixed: Record<string, unknown> = { ...(raw as Record<string, unknown>) }
+  let changed = false
+  for (const issue of first.error.issues) {
+    if (issue.code !== 'invalid_type' || issue.path.length !== 1) continue
+    const key = String(issue.path[0])
+    const v = fixed[key]
+    if (typeof v !== 'string') continue
+    const t = v.trim()
+    if (issue.expected === 'number' && t !== '' && Number.isFinite(Number(t))) (fixed[key] = Number(t), (changed = true))
+    else if (issue.expected === 'boolean' && /^(true|false)$/i.test(t)) (fixed[key] = t.toLowerCase() === 'true', (changed = true))
+  }
+  return changed ? schema.safeParse(fixed) : first
 }
 
 /** Calls one tool by name outside a model conversation (used by workflows). */

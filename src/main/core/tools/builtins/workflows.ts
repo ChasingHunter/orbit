@@ -6,7 +6,7 @@ import { explain, parseWorkflow, workflowStore } from '../../../workflows/store'
 import { workflows } from '../../../workflows/engine'
 import { defineTool } from '../types'
 import { removeWorkflowTracked, saveWorkflowTracked } from '../../changes'
-import { unknownTools } from '../../../workflows/validate'
+import { argProblems, unknownTools } from '../../../workflows/validate'
 
 const SPEC = `YAML format:
 name: lowercase-with-dashes
@@ -59,7 +59,11 @@ More step types (they contain steps of their own):
 Rules:
 - To DO something (notify, send, create, post), use a tool step with the exact tool name. An agent step only writes text; it can call tools only if you list them in its tools.
 - approved: true exists only on tool steps. Steps that change things and aren't approved: true ask for approval every run.
-- A scheduled run's final output is shown to the user as a notification, so a final agent step works for "summarise X for me" workflows.`
+- A scheduled run's final output is shown to the user as a notification, so a final agent step works for "summarise X for me" workflows.
+- Tool args must match the tool's inputs exactly (create_workflow checks them and says what's wrong). Numbers are numbers: limit: 15, not "15".
+- A workflow that writes a dated file with create_file should pass ifExists: number, so a second run the same day doesn't fail.
+- "The project folder" means the active project's pinned folder; use its full path. If you're not sure which folder the user means, ask before saving.
+- After saving, if the workflow only reads and writes files or notifies (nothing sent or posted), test it once with run_workflow and report the result honestly.`
 
 // The full format guide is its own tool so its ~900 tokens aren't sent with every message,
 // only when the model is actually writing a workflow.
@@ -90,6 +94,8 @@ export const createWorkflow = defineTool({
       if (unknown.length) {
         throw new Error(`unknown tool${unknown.length > 1 ? 's' : ''} ${unknown.join(', ')}. Use exact names from your tool list`)
       }
+      const args = argProblems(wf)
+      if (args.length) throw new Error(args.join('; '))
       if ('cron' in wf.trigger) nextRunFor({ cron: wf.trigger.cron })
     } catch (err) {
       throw new Error(`That YAML isn't valid: ${explain(err)}. Check workflow_guide and try again.`)
