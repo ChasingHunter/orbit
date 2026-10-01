@@ -83,6 +83,8 @@ Mark a memory private and it's only ever sent to models running on your own mach
 
 Say "research the best Postgres hosting for a startup in India, in the background" and Orbit hands it to a separate agent so you can keep going. When it's done you get a notification, and the result is saved as a markdown file (the dashboard has it too). For jobs that split up neatly, it can run up to four agents at the same time and put their answers together. If a job needs something from you halfway through, it asks in the bar and waits.
 
+For a proper report, ask for research ("research how other countries handle e-scooter rules"). Orbit splits the question into parts, has up to three agents search them at once, and writes a report with numbered sources, saved as a file. It's heavy on tokens, so before it starts you see an estimate (a quick report is roughly 100k to 170k tokens, depending on whether you have a search key) next to what's left of today's background budget, and you approve it. It stops early rather than run far past the estimate, and the Tasks page shows what it's working on.
+
 ## Your files
 
 Orbit can read files in the folders you allow (Downloads and Desktop to start; change them in Settings). It reads PDFs, Word, Excel, PowerPoint and any text format, so "summarise the PDFs in my Downloads" works, and so does a workflow that reads each new invoice that lands there. It can't read anything outside those folders, even through shortcuts.

@@ -70,7 +70,7 @@ function StatusIcon({ status }: { status: TaskItem['status'] }): React.JSX.Eleme
 }
 
 function statusLabel(t: TaskItem): string {
-  if (t.status === 'running') return 'Running'
+  if (t.status === 'running') return t.progress ? `Running: ${t.progress}` : 'Running'
   if (t.status === 'done') return 'Done'
   if (t.status === 'failed') return 'Failed'
   return 'Stopped'

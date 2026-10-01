@@ -37,6 +37,8 @@ export type TaskItem = {
   error: string | null
   created_at: string
   finished_at: string | null
+  /** What a running task is doing now. */
+  progress?: string | null
 }
 
 export type DashSettings = {

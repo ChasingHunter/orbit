@@ -1,6 +1,6 @@
 import type { OrbitTool } from '../types'
 import { getContext, notify } from './local'
-import { spawnAgents, startBackgroundTask } from './agents'
+import { deepResearch, spawnAgents, startBackgroundTask } from './agents'
 import { listIntegrations } from './integrations'
 import { forget, recall, remember } from './memory'
 import { cancelReminder, listReminders, setReminder } from './reminders'
@@ -17,4 +17,4 @@ import { runCommand, runPythonTool } from './code'
 import { browserAct, browserLook } from './browser'
 import { useSkill } from './skills'
 
-export const builtinTools = [webSearch, webFetch, notify, getContext, remember, recall, forget, listIntegrations, startBackgroundTask, spawnAgents, setReminder, listReminders, cancelReminder, workflowGuide, createWorkflow, listWorkflows, runWorkflow, deleteWorkflow, readFeed, saveFile, readSavedFile, makeFile, listFolder, readFile, askUserTool, suggestMemory, listChanges, undoChangeTool, createFile, editFile, moveFiles, deleteFiles, copyFile, runPythonTool, runCommand, browserLook, browserAct, useSkill] as unknown as OrbitTool[]
+export const builtinTools = [webSearch, webFetch, notify, getContext, remember, recall, forget, listIntegrations, startBackgroundTask, spawnAgents, setReminder, listReminders, cancelReminder, workflowGuide, createWorkflow, listWorkflows, runWorkflow, deleteWorkflow, readFeed, saveFile, readSavedFile, makeFile, listFolder, readFile, askUserTool, suggestMemory, listChanges, undoChangeTool, createFile, editFile, moveFiles, deleteFiles, copyFile, runPythonTool, runCommand, browserLook, browserAct, useSkill, deepResearch] as unknown as OrbitTool[]

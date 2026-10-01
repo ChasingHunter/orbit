@@ -62,6 +62,12 @@ export function getDb(): DatabaseSync {
     db = new DatabaseSync(join(dataDir, 'orbit.db'))
     db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;')
     db.exec(SCHEMA)
+    // Added in 0.9: what a running task is doing right now.
+    try {
+      db.exec('ALTER TABLE tasks ADD COLUMN progress TEXT')
+    } catch {
+      // already there
+    }
   }
   return db
 }
