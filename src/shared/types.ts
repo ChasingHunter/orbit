@@ -47,6 +47,8 @@ export type BarEvent =
   /** Local dictation: the finished text, for the input. */
   | { type: 'transcript'; text: string }
   | { type: 'agent'; turnId: string; event: AgentEvent }
+  /** Orbit continued a request by itself (after you granted access); show it like any answer. */
+  | { type: 'auto-turn'; turnId: string; note: string }
   | { type: 'approval'; request: ApprovalRequest }
   | { type: 'notice'; level: 'info' | 'error'; text: string; action?: { label: string; command: string } }
   /** Local engine: start/stop mic capture in the bar. discard = drop audio (bar closed). */

@@ -80,7 +80,8 @@ function stopSpeaking(): void {
 }
 const conversation = new Conversation(
   (turnId, event) => sendToBar({ type: 'agent', turnId, event }),
-  (text, action) => sendToBar({ type: 'notice', level: 'info', text, action })
+  (text, action) => sendToBar({ type: 'notice', level: 'info', text, action }),
+  (turnId, note) => sendToBar({ type: 'auto-turn', turnId, note })
 )
 
 function autoSubmitMs(): number | null {

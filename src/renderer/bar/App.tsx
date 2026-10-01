@@ -255,6 +255,14 @@ export function App(): React.JSX.Element {
           setContext([])
           setBusy(false)
           break
+        case 'auto-turn':
+          setEntries((all) => [
+            ...all,
+            { kind: 'notice', id: `n-${ev.turnId}`, level: 'info', text: `${ev.note}. Continuing.` },
+            { kind: 'assistant', id: ev.turnId, text: '', tools: [], done: false, canPaste: false }
+          ])
+          setBusy(true)
+          break
         case 'agent': {
           const e = ev.event
           if (e.type === 'text') {

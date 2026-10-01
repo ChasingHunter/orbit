@@ -50,7 +50,7 @@ export function checked(path: string): string {
     const rel = relative(root.toLowerCase(), real.toLowerCase())
     return rel === '' || (!rel.startsWith('..') && !rel.startsWith(sep) && !/^[a-z]:/i.test(rel))
   })
-  if (!inside) throw new Error(`Orbit isn't allowed to read ${real}. Allowed folders: ${roots.join(', ')}`)
+  if (!inside) throw new Error(`Orbit isn't allowed to read ${real}. Allowed folders: ${roots.join(', ')}. Ask for it with request_access (kind read_folder).`)
   return real
 }
 

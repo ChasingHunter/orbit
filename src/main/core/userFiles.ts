@@ -61,7 +61,7 @@ function realRoots(): string[] {
  */
 export function writablePath(path: string, want: 'existing-file' | 'new-file'): string {
   const roots = realRoots()
-  if (!roots.length) throw new Error("No folder is writable. In Settings > Folders, turn on \"Orbit can change files here\" for one.")
+  if (!roots.length) throw new Error('No folder is writable yet. Ask the user for write access with request_access (kind write_folder).')
   const abs = /^[a-z]:|^[\\/]/i.test(path) ? resolve(path) : resolve(roots[0], path)
   let real: string
   if (want === 'existing-file') {
@@ -78,7 +78,7 @@ export function writablePath(path: string, want: 'existing-file' | 'new-file'): 
     if (BLOCKED_EXT.has(extname(abs).toLowerCase())) throw new Error(`Orbit doesn't create ${extname(abs)} files, since opening one runs it`)
   }
   if (!roots.some((r) => inside(r, real))) {
-    throw new Error(`Orbit can't change files in ${dirname(real)}. Writable folders: ${roots.join(', ')}`)
+    throw new Error(`Orbit can't change files in ${dirname(real)} (writable: ${roots.join(', ')}). Ask for it with request_access (kind write_folder).`)
   }
   return real
 }

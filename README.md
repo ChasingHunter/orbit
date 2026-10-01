@@ -188,6 +188,8 @@ Every tool has a risk class: it only reads, it changes Orbit's own stuff (memori
 
 Below the levels you can set any single tool to always ask, always run, or never run, and that wins over the level. When a card does pop up, "Allow for this chat" lets that tool run without asking again until you start a new chat or hit the stop hotkey. At Strict, even steps a workflow was told to pre-approve ask you.
 
+If Orbit needs something that's switched off (a folder it can't read or change, commands, a service that isn't connected), it asks you on a card instead of sending you to Settings. Approve, and it changes the setting and carries on with what you asked. That card appears at every level, Full included, and Orbit never asks for a whole drive, Windows or program folders, or a folder that contains them.
+
 Text you select and pages Orbit reads are treated as data, so a web page can't talk the model into doing something. Every tool call is logged, and the Logs page shows what was asked, whether you approved it, and what came back.
 
 ## Undoing things
