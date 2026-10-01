@@ -4,7 +4,7 @@ Orbit is a small assistant that sits in your Windows tray. Press a hotkey, say o
 
 I wanted something like the Gemini or Copilot sidebar, but for every app on my PC, open source, and not tied to one AI company. You can point it at your Claude subscription, an API key, or a model running locally in Ollama, and everything else works the same.
 
-It's early (version 0.10). It can remember things about you, read the files you attach, make Word, Excel, PowerPoint and PDF files, run Python in a sandbox, change files in folders you allow (with undo), use a browser, research a question and write up a report, keep projects with their own files and instructions, make little interactive pages, answer you on Telegram from your phone, work in the background, use Notion, Slack, Gmail and Google Calendar, set reminders, and run n8n-style workflows that you build by asking or on a canvas. The full roadmap is in [plan.md](plan.md).
+It's early (version 0.11). It can remember things about you, read the files you attach, make Word, Excel, PowerPoint and PDF files, run Python in a sandbox, change files in folders you allow (with undo), use a browser, research a question and write up a report, keep projects with their own files and instructions, make little interactive pages, answer you on Telegram from your phone, work in the background, use Notion, Slack, Gmail and Google Calendar, set reminders, and run n8n-style workflows that you build by asking or on a canvas. The full roadmap is in [plan.md](plan.md).
 
 ## Install
 
@@ -97,7 +97,7 @@ Orbit can read files in the folders you allow (Downloads and Desktop to start; c
 
 It can't change anything in them either, until you tick "Orbit can change files here" next to a folder. Then it can create, edit, rename, move and delete files there, for example "rename these scans by their invoice number". Before every change the old file is copied to a backup folder (kept 30 days, up to 2 GB), and deleting only moves the file into that backup. A batch of changes shows up as one approval card listing every file, and one Undo puts them all back. If you've edited a file since Orbit touched it, Undo tells you and asks first; your newer version is backed up too, so nothing gets lost either way.
 
-Orbit won't create or rename files to types that run when you open them (.exe, .bat, .ps1, .js, shortcuts and the like), and it only edits text files in place. Until one folder is writable, the model isn't even told these tools exist, so they cost no tokens.
+Orbit won't create, save or rename files to types that run when you open them (.exe, .bat, .ps1, .js, shortcuts and the like), and it won't open one for you, and it only edits text files in place. Until one folder is writable, the model isn't even told these tools exist, so they cost no tokens.
 
 Orbit can also make Word, Excel, PowerPoint and PDF files ("turn this into a one-page PDF", "put these numbers in a spreadsheet with totals"). They never overwrite anything (a second report.docx becomes report (2).docx), and the answer shows the file with Open, Save as…, Keep and Show in folder buttons.
 
@@ -119,7 +119,7 @@ It reads pages as text plus a numbered list of buttons and fields rather than ta
 
 ## Projects
 
-A project is a name, some instructions ("answer as if you're my renovation planner, budget is 15k") and files or folders you pin, set up on the dashboard's Projects page. Pick it from the menu in the bar and every question in that chat uses it. Orbit indexes the pinned files once (and again when they change), so each message only carries the few passages that match what you asked rather than whole files. Memories saved while a project is active stay with that project, and History shows which project a chat belonged to.
+A project is a name, some instructions ("answer as if you're my renovation planner, budget is 15k") and files or folders you pin, set up on the dashboard's Projects page. Pick it from the menu in the bar and every question in that chat uses it. You can also just mention it in any chat ("summarise the data in my coffee cart project") and Orbit reads its pinned files. Orbit indexes the pinned files once (and again when they change), so each message only carries the few passages that match what you asked rather than whole files. Memories saved while a project is active stay with that project, and History shows which project a chat belonged to.
 
 ## Skills
 

@@ -7,12 +7,14 @@ import { saveOwnBinary, saveOwnFile } from '../../changes'
 import { makeDocx, makePdf, makePptx, makeXlsx } from '../../office'
 import { extractText, OFFICE_TYPES } from '../../extract'
 import { inTemp, TEMP_DAYS, trackMade } from '../../madeFiles'
+import { isRunnable } from '../../userFiles'
 
 /** Resolves a name inside Orbit's files folder and refuses anything that escapes it. */
 export function inFiles(name: string): string {
   const full = resolve(paths.files, name.replace(/^[/\\]+/, ''))
   const rel = relative(paths.files, full)
   if (!rel || rel.startsWith('..') || resolve(paths.files, rel) !== full) throw new Error('Files can only be saved inside Orbit\'s files folder')
+  if (isRunnable(full)) throw new Error(`Orbit doesn't save ${extname(full)} files, since opening one runs it. Show the user the text instead.`)
   return full
 }
 
@@ -90,6 +92,7 @@ export const makeFile = defineTool({
  * workflow files go straight to the files folder.
  */
 export function saveMade(name: string, data: Buffer, source: 'chat' | 'workflow'): string {
+  if (isRunnable(name)) throw new Error(`Orbit doesn't save ${extname(name)} files, since opening one runs it. Show the user the text instead.`)
   if (source === 'workflow') return `Saved ${saveOwnBinary(inFiles(name), data)}`
   const saved = saveOwnBinary(inTemp(name), data)
   trackMade(saved)

@@ -156,7 +156,7 @@ export function projectFiles(id: string): string[] {
   return (db().prepare('SELECT path FROM project_files WHERE project_id = ? ORDER BY path').all(id) as { path: string }[]).map((r) => r.path)
 }
 
-/** Folders and files read_file may read while a project is active. */
+/** Folders and files pinned to any project: the user shared them with Orbit, so read_file may read them. */
 export function projectPaths(): string[] {
-  return active ? (getProject(active)?.paths ?? []) : []
+  return (db().prepare('SELECT DISTINCT path FROM project_paths').all() as { path: string }[]).map((r) => r.path)
 }

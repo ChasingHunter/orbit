@@ -26,6 +26,11 @@ const BLOCKED_EXT = new Set([
 ])
 const MAX_FILE = 200 * 1024 * 1024
 
+/** True for files that run something when opened. Orbit never makes or opens these. */
+export function isRunnable(path: string): boolean {
+  return BLOCKED_EXT.has(extname(path).toLowerCase())
+}
+
 function expand(p: string): string {
   return p.replace(/^~(?=[\\/]|$)/, app.getPath('home')).replace(/^%(\w+)%/, (_m, v: string) => {
     const known: Record<string, string> = { DOWNLOADS: app.getPath('downloads'), DESKTOP: app.getPath('desktop'), DOCUMENTS: app.getPath('documents') }
@@ -75,7 +80,7 @@ export function writablePath(path: string, want: 'existing-file' | 'new-file'): 
     let parent = dirname(abs)
     while (!existsSync(parent) && dirname(parent) !== parent) parent = dirname(parent)
     real = join(realpathSync(parent), relative(parent, abs))
-    if (BLOCKED_EXT.has(extname(abs).toLowerCase())) throw new Error(`Orbit doesn't create ${extname(abs)} files, since opening one runs it`)
+    if (isRunnable(abs)) throw new Error(`Orbit doesn't create ${extname(abs)} files, since opening one runs it`)
   }
   if (!roots.some((r) => inside(r, real))) {
     throw new Error(`Orbit can't change files in ${dirname(real)} (writable: ${roots.join(', ')}). Ask for it with request_access (kind write_folder).`)

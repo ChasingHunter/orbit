@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { onGrant } from './grants'
 import { clearReads } from './readTracker'
-import { activeProject, getProject, projectFiles, searchProject } from './projects'
+import { activeProject, getProject, listProjects, projectFiles, searchProject } from './projects'
 import { randomUUID } from 'node:crypto'
 import type { AgentEvent, ContextItem, ImageInput } from '@shared/types'
 import { paths } from '../paths'
@@ -21,7 +21,18 @@ type Notify = (text: string, action?: { label: string; command: string }) => voi
 function projectPrompt(): string {
   const id = activeProject()
   const p = id ? getProject(id) : undefined
-  if (!p) return ''
+  // The other projects, so "my coffee cart project" works without picking it in the bar first.
+  const others = listProjects().filter((x) => x.id !== id && x.paths.length)
+  const otherLines = others.length
+    ? [
+        `The user's ${p ? 'other ' : ''}projects (when they mention one, use its pinned files: read_file, or search_project with its name):`,
+        ...others.slice(0, 15).map((x) => {
+          const files = projectFiles(x.id)
+          return `- "${x.name}": ${x.paths.join('; ')}${files.length ? ` (files: ${files.slice(0, 12).join(', ')}${files.length > 12 ? ', …' : ''})` : ''}`
+        })
+      ].join('\n')
+    : ''
+  if (!p) return otherLines
   const files = projectFiles(p.id)
   return [
     `You're working in the user's project "${p.name}". "The project", "the project folder" or "the data" means this project and its pinned files.`,
@@ -30,7 +41,8 @@ function projectPrompt(): string {
     files.length
       ? `Files in it (read them with read_file when the user asks about the project's contents):\n${files.slice(0, 40).map((f) => `- ${f}`).join('\n')}${files.length > 40 ? `\n(and ${files.length - 40} more)` : ''}`
       : '',
-    p.paths.length ? 'Each message also includes the passages of these files that best match it, in <project_files>; search_project finds more.' : ''
+    p.paths.length ? 'Each message also includes the passages of these files that best match it, in <project_files>; search_project finds more.' : '',
+    otherLines
   ]
     .filter(Boolean)
     .join('\n')
@@ -253,7 +265,7 @@ export class Conversation {
           if (ev.type === 'text') answer += ev.delta
           if (ev.type === 'tool-call') requests++
           if (ev.type === 'usage') {
-            recordUsage('chat', text, ev)
+            recordUsage('chat', text.endsWith(') Continue with what I asked.') ? 'Carried on after access was granted' : text, ev)
             read += ev.input + ev.cacheRead + ev.cacheWrite
           }
           if (ev.type === 'rate-limit') void this.offerFallback(ev.resetsAt)

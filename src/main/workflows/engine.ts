@@ -221,7 +221,7 @@ class WorkflowEngine extends EventEmitter {
     this.emit('change')
 
     const d = new Date()
-    const ctx: Ctx = { steps: {}, input, date: d.toISOString().slice(0, 10), now: localNow(d), workflow: name, trigger: triggerData }
+    const ctx: Ctx = { steps: {}, input, date: localNow(d).slice(0, 10), now: localNow(d), workflow: name, trigger: triggerData }
     try {
       const last = wf.prompt ? await this.runAgentic(wf, ctx, abort.signal) : await this.runSteps(wf, id, wf.steps, ctx, abort.signal)
       const output = wf.output ? render(wf.output, ctx) : last

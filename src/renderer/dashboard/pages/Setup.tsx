@@ -54,7 +54,7 @@ export function SetupPage(): React.JSX.Element {
                 <div className="mt-0.5 text-xs text-zinc-500">{c.why}</div>
                 {c.id === 'search' && c.status !== 'ok' && (
                   <div className="mt-2 flex gap-2">
-                    <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="Paste your Brave Search key" type="password" className={inputClass} />
+                    <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="Paste your Tavily key" type="password" className={inputClass} />
                     <Button onClick={() => void dash.saveSearchKey(key.trim()).then(load)} disabled={!key.trim()}>
                       Save
                     </Button>

@@ -51,7 +51,7 @@ const player = new PcmPlayer()
 let speechOn = false
 
 type ToolRow = { id: string; name: string; input: unknown; output?: string; isError?: boolean }
-type Assistant = { kind: 'assistant'; id: string; text: string; tools: ToolRow[]; error?: string; done: boolean; canPaste: boolean; note?: string }
+type Assistant = { kind: 'assistant'; id: string; text: string; tools: ToolRow[]; error?: string; done: boolean; canPaste: boolean; note?: string; /** A tool ran since the last text: start the next text on a new paragraph. */ afterTool?: boolean }
 type Entry =
   | { kind: 'user'; id: string; text: string; context: ContextItem[] }
   | Assistant
@@ -266,11 +266,15 @@ export function App(): React.JSX.Element {
         case 'agent': {
           const e = ev.event
           if (e.type === 'text') {
-            updateAssistant(ev.turnId, (a) => ({ ...a, text: a.text + e.delta }))
+            updateAssistant(ev.turnId, (a) => ({
+              ...a,
+              text: a.text + (a.afterTool && a.text && !/\s$/.test(a.text) ? '\n\n' : '') + e.delta,
+              afterTool: false
+            }))
             if (reading.current?.turnId === ev.turnId) for (const s of reading.current.splitter.push(e.delta)) api.speak(s)
           }
           else if (e.type === 'tool-call')
-            updateAssistant(ev.turnId, (a) => ({ ...a, tools: [...a.tools, { id: e.id, name: e.name, input: e.input }] }))
+            updateAssistant(ev.turnId, (a) => ({ ...a, afterTool: true, tools: [...a.tools, { id: e.id, name: e.name, input: e.input }] }))
           else if (e.type === 'tool-result')
             updateAssistant(ev.turnId, (a) => ({
               ...a,

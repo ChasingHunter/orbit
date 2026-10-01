@@ -8,6 +8,7 @@ import { defineTool } from '../types'
 import { checked } from './folders'
 import { saveMade } from './files'
 import { runPython } from '../../../python/sandbox'
+import { paths } from '../../../paths'
 
 // Running code. Python runs in a sandbox (see python/sandbox.ts) and can't touch the user's
 // files or the internet, so it's a local-risk tool. Real commands are the opposite: full user
@@ -41,8 +42,10 @@ export const runPythonTool = defineTool({
       const path = checked(f)
       total += statSync(path).size
       if (total > MAX_IN) throw new Error('Input files are over 50 MB together')
-      let name = basename(path)
-      for (let n = 2; inputs.some((i) => i.name === name); n++) name = `${n}-${basename(path)}`
+      // Attachments are stored as "<8 hex>-name"; the code sees the name the user knows.
+      const shown = path.startsWith(paths.attachments) ? basename(path).replace(/^[0-9a-f]{8}-/, '') : basename(path)
+      let name = shown
+      for (let n = 2; inputs.some((i) => i.name === name); n++) name = `${n}-${shown}`
       inputs.push({ name, data: readFileSync(path) })
     }
     const { timeoutSec, memoryMb } = settings.current.tools.python

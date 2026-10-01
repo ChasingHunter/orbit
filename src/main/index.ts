@@ -30,6 +30,7 @@ import { scheduler } from './core/scheduler'
 import { workflows } from './workflows/engine'
 import { triggers } from './workflows/triggers'
 import { callTool, runnableTools } from './core/tools/registry'
+import { isRunnable } from './core/userFiles'
 import { recentChanges, undoChange } from './core/journal'
 import { z } from 'zod'
 import { browserUrl, startBrowserUrlHelper, stopBrowserUrlHelper } from './os/browserUrl'
@@ -297,7 +298,7 @@ function registerIpc(): void {
       const outside = resolve(path)
       if (!existsSync(outside)) return { path, state: { state: 'gone' } }
       const readable = [paths.attachments, ...allowedFolders(), ...projectsModule.projectPaths()].some((r) => !relative(r.toLowerCase(), outside.toLowerCase()).startsWith('..'))
-      if (action === 'open' && readable && !/\.(exe|bat|cmd|ps1|vbs|js|msi|lnk|scr|com|hta|reg)$/i.test(outside)) void shell.openPath(outside)
+      if (action === 'open' && readable && !isRunnable(outside)) void shell.openPath(outside)
       else shell.showItemInFolder(outside)
       return { path: outside, state: { state: 'kept' } }
     }
@@ -307,6 +308,7 @@ function registerIpc(): void {
       made.markOpened(full)
       // Pages open in Orbit's locked-down page window, not the default browser.
       if (/\.html$/i.test(full)) openPage(full)
+      else if (isRunnable(full)) shell.showItemInFolder(full)
       else void shell.openPath(full)
     } else if (action === 'reveal') shell.showItemInFolder(full)
     else if (action === 'keep') full = made.keep(full)
