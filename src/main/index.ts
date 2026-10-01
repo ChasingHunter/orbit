@@ -1,4 +1,5 @@
-import { app, clipboard, globalShortcut, ipcMain, Notification, shell, dialog, protocol } from 'electron'
+import { app, clipboard, globalShortcut, ipcMain, shell, dialog, protocol } from 'electron'
+import { notify, setNotifyTargets } from './os/notify'
 import { randomUUID } from 'node:crypto'
 import type { ContextItem } from '@shared/types'
 import type { DashPage } from '@shared/dash'
@@ -37,6 +38,7 @@ import { attachData, attachPaths } from './core/attachments'
 import { runCleanup, startHousekeeping, storageReport } from './core/housekeeping'
 import * as made from './core/madeFiles'
 import { pythonScheme } from './python/sandbox'
+import { allowedFolders } from './core/tools/builtins/folders'
 import { openPage, pageScheme } from './windows/page'
 import { setPageOpener } from './core/tools/builtins/files'
 import { browserOpen, closeBrowser } from './browser/session'
@@ -155,7 +157,7 @@ function onPanic(): void {
   workflows.cancelAll()
   denyAllApprovals()
   void closeBrowser()
-  new Notification({ title: 'Orbit', body: 'Stopped all running tasks.' }).show()
+  notify('Orbit', 'Stopped all running tasks.')
 }
 
 function rebindHotkeys(): string[] {
@@ -165,7 +167,7 @@ function rebindHotkeys(): string[] {
     panic: onPanic
   })
   if (failed.length) {
-    new Notification({ title: 'Orbit: hotkey conflict', body: `Could not register: ${failed.join(', ')}` }).show()
+    notify('Orbit: hotkey conflict', `Could not register: ${failed.join(', ')}`, 'settings')
   }
   return failed
 }
@@ -275,7 +277,7 @@ function registerIpc(): void {
       // Never drop the text: leave it on the clipboard and say so.
       logInfo('paste: failed', err)
       await clipboard.writeText(text).catch(() => {})
-      new Notification({ title: "Couldn't paste it in", body: 'The text is on your clipboard. Press Ctrl+V where you want it.' }).show()
+      notify("Couldn't paste it in", 'The text is on your clipboard. Press Ctrl+V where you want it.')
     }
   })
   ipcMain.on('bar:screenshot', () => void onScreenshot())
@@ -289,6 +291,17 @@ function registerIpc(): void {
   }
   ipcMain.handle('bar:file-state', (_e, path: string) => (ownFile(path) ? made.stateOf(ownFile(path)!) : { state: 'gone' }))
   ipcMain.handle('bar:file-action', async (_e, path: string, action: 'open' | 'reveal' | 'save' | 'keep') => {
+    // A path mentioned in an answer (History, Tasks) that isn't one of Orbit's own files: it can
+    // be opened if it's in a folder Orbit may read, and otherwise only shown in Explorer, so a link
+    // in a reply can never run something.
+    if (!ownFile(path)) {
+      const outside = resolve(path)
+      if (!existsSync(outside)) return { path, state: { state: 'gone' } }
+      const readable = [paths.attachments, ...allowedFolders(), ...projectsModule.projectPaths()].some((r) => !relative(r.toLowerCase(), outside.toLowerCase()).startsWith('..'))
+      if (action === 'open' && readable && !/\.(exe|bat|cmd|ps1|vbs|js|msi|lnk|scr|com|hta|reg)$/i.test(outside)) void shell.openPath(outside)
+      else shell.showItemInFolder(outside)
+      return { path: outside, state: { state: 'kept' } }
+    }
     let full = ownFile(path)
     if (!full || !existsSync(full)) return { path, state: { state: 'gone' } }
     if (action === 'open') {
@@ -341,25 +354,33 @@ app.whenReady().then(() => {
     'reminder',
     (s) => {
       const { text } = JSON.parse(s.payload) as { text: string }
-      new Notification({ title: 'Reminder', body: text }).show()
+      notify('Reminder', text)
       if (bar().isVisible()) sendToBar({ type: 'notice', level: 'info', text: `Reminder: ${text}` })
     },
     (s, { missedAt }) => {
       const { text } = JSON.parse(s.payload) as { text: string }
-      new Notification({ title: 'Missed reminder', body: `${text} (was due ${missedAt?.toLocaleString()})` }).show()
+      notify('Missed reminder', `${text} (was due ${missedAt?.toLocaleString()})`)
     }
   )
   setMemorySuggestionPresenter((s) => sendToBar({ type: 'memory-suggestion', ...s }))
   setQuestionPresenter((question) => {
     sendToBar({ type: 'question', question })
     if (!bar().isVisible()) showBar()
-    new Notification({ title: 'Orbit has a question', body: question.question }).show()
+    notify('Orbit has a question', question.question, 'bar')
   })
   setApprovalPresenter((request) => {
     sendToBar({ type: 'approval', request })
     if (!bar().isVisible()) showBar()
   })
   createBar()
+  // Clicking a notification that's waiting on you brings the bar up, focused.
+  setNotifyTargets(
+    () => {
+      showBar()
+      bar().focus()
+    },
+    (p) => openDashboard(p)
+  )
   setBarBlurHandler(() => {
     stopSpeaking()
     void voice.cancel()

@@ -10,7 +10,7 @@ import { fallbackModel, isCloudModel, isOnline } from '../runners/fallback'
 import type { RunnerSession } from '../runners/types'
 import { runnableTools } from './tools/registry'
 import { searchMemories, type Memory } from './memory'
-import { addMessage, createConversation, deleteLastExchange, getMessages } from './history'
+import { addMessage, createConversation, deleteLastExchange, getMessages, setConversationModel } from './history'
 import { recordUsage } from './usage'
 import type { RunnableTool } from './tools/types'
 
@@ -145,17 +145,26 @@ export class Conversation {
    * Reuses the runner session while the model and tool set stay the same. Connecting a
    * service mid-chat changes the tools, which needs a fresh session to take effect.
    */
-  private ensureSession(ref: string, withTools = true): RunnerSession {
+  private ensureSession(ref: string, withTools = true): { session: RunnerSession; fresh: boolean } {
     const tools = withTools ? this.tools() : []
     // The project is part of the system prompt, so switching it needs a new session.
     const key = `${activeProject() ?? ''}|${tools.map((t) => t.name).join(',')}`
-    if (this.session && this.modelRef === ref && this.toolsKey === key) return this.session
+    if (this.session && this.modelRef === ref && this.toolsKey === key) return { session: this.session, fresh: false }
     this.session?.close()
     const { runner, model } = resolveModel(ref)
     this.session = runner.createSession({ system: systemPrompt(), model, tools })
     this.modelRef = ref
     this.toolsKey = key
-    return this.session
+    return { session: this.session, fresh: true }
+  }
+
+  /** The chat so far as text, minus the message just sent, for a new session to continue from. */
+  private transcript(conversationId: string, skipLast = false): string {
+    const messages = getMessages(conversationId)
+    if (skipLast) messages.pop()
+    let text = messages.map((m) => `${m.role === 'user' ? 'User' : 'You'}: ${m.text}`).join('\n\n')
+    if (text.length > 24_000) text = '…' + text.slice(-24_000)
+    return text
   }
 
   /** Runnable tools that also report their calls/results to the bar. */
@@ -197,9 +206,13 @@ export class Conversation {
       let answer = ''
       try {
         const pick = await this.pickModel()
-        const session = this.ensureSession(pick.ref, pick.tools)
+        const { session, fresh } = this.ensureSession(pick.ref, pick.tools)
+        setConversationModel(conversationId, pick.ref)
+        // A new session (different model, tools that changed because a folder or service was just
+        // allowed, a project switch) starts blank. Hand it the chat so far so nothing is forgotten.
+        const earlier = carry || (fresh ? this.transcript(conversationId, true) : '')
         const turn = composeTurn(text, context, memories)
-        if (carry) turn.text = `<earlier_conversation note="the user reopened this chat; continue from it">\n${carry}\n</earlier_conversation>\n\n${turn.text}`
+        if (earlier) turn.text = `<earlier_conversation note="the conversation so far; continue from it">\n${earlier}\n</earlier_conversation>\n\n${turn.text}`
         let requests = 1
         let read = 0
         for await (const ev of session.send(turn, abort.signal)) {
@@ -274,9 +287,7 @@ export class Conversation {
     this.reset()
     const messages = getMessages(conversationId)
     this.conversationId = conversationId
-    let transcript = messages.map((m) => `${m.role === 'user' ? 'User' : 'You'}: ${m.text}`).join('\n\n')
-    if (transcript.length > 24_000) transcript = '…' + transcript.slice(-24_000)
-    this.carryOver = transcript
+    this.carryOver = this.transcript(conversationId)
     return messages.map((m) => ({ role: m.role, text: m.text }))
   }
 

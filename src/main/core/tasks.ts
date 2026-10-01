@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
+import { notify } from '../os/notify'
 import { EventEmitter } from 'node:events'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Notification } from 'electron'
 import { paths } from '../paths'
 import { settings } from '../settingsStore'
 import { resolveModel } from '../runners'
@@ -69,10 +69,7 @@ function budgetNotice(limit: number): void {
   const day = new Date().toDateString()
   if (noticedDay === day) return
   noticedDay = day
-  new Notification({
-    title: 'Background work paused for today',
-    body: `Workflows and background tasks used their ${limit.toLocaleString()}-token budget. Chat still works.`
-  }).show()
+  notify('Background work paused for today', `Workflows and background tasks used their ${limit.toLocaleString()}-token budget. Chat still works.`, 'usage')
 }
 
 function slug(s: string): string {
@@ -113,12 +110,12 @@ class TaskManager extends EventEmitter {
         const file = join(paths.files, `${new Date().toISOString().slice(0, 10)}-${slug(title)}.md`)
         writeFileSync(file, `# ${title}\n\n${result}\n`)
         this.finish(id, 'done', `${result}\n\nSaved to ${file}`)
-        new Notification({ title: `Done: ${title}`, body: result.replace(/[#*_`]/g, '').slice(0, 180) }).show()
+        notify(`Done: ${title}`, result.replace(/[#*_`]/g, '').slice(0, 180), 'tasks')
       })
       .catch((err: Error) => {
         const cancelled = abort.signal.aborted
         this.finish(id, cancelled ? 'cancelled' : 'failed', null, cancelled ? null : err.message)
-        if (!cancelled) new Notification({ title: `Failed: ${title}`, body: err.message.slice(0, 180) }).show()
+        if (!cancelled) notify(`Failed: ${title}`, err.message.slice(0, 180), 'tasks')
       })
     return id
   }

@@ -132,7 +132,7 @@ export type SetupCheck = {
   action?: { label: string; kind: 'sign-in' | 'install-voice' | 'url' | 'key'; target?: string }
 }
 
-export type ChangeItem = { id: number; at: string; source: string; summary: string; undone_at: string | null }
+export type ChangeItem = { id: number; at: string; source: string; summary: string; undone_at: string | null; /** For file edits: what changed. */ diff?: string }
 
 export type UsageInfo = {
   days: { day: string; source: 'chat' | 'task' | 'workflow' | 'trigger'; input: number; output: number; cacheRead: number; cacheWrite: number; calls: number }[]

@@ -222,7 +222,13 @@ export function registerDashboardIpc(): void {
     notifyDashboard('memory')
     notifyDashboard('workflows')
   })
-  ipcMain.handle('dash:changes', () => recentChanges(50))
+  ipcMain.handle('dash:changes', () =>
+    recentChanges(50).map(({ undo, ...c }) => ({
+      ...c,
+      // File edits keep a diff, shown on the Logs page.
+      diff: undo.kind === 'user-files' ? undo.ops.flatMap((o) => (o.op === 'edit' && o.diff ? [`${o.path}\n${o.diff}`] : [])).join('\n\n') || undefined : undefined
+    }))
+  )
   ipcMain.handle('dash:undo', (_e, id: number, force?: boolean) => {
     try {
       return { done: undoChange(id, !!force) }

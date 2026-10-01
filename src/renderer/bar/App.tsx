@@ -36,6 +36,7 @@ type QuickAction = Extract<BarEvent, { type: 'open' }>['quickActions'][number]
 type Question = Extract<BarEvent, { type: 'question' }>['question']
 import { Markdown } from './Markdown'
 import { attachFiles } from './attach'
+import { DiffView } from '../shared/DiffView'
 import { Recorder } from './recorder'
 import { PcmPlayer, SentenceSplitter } from './player'
 
@@ -423,16 +424,15 @@ export function App(): React.JSX.Element {
         {dragging && (
           <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center bg-zinc-950/70 text-sm text-sky-200">Drop to attach</div>
         )}
-        {hasThread && (
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-1.5">
-            <span className="text-[11px] font-medium tracking-wide text-zinc-500">ORBIT</span>
-            <div className="flex items-center gap-0.5">
-              <IconButton icon={LayoutDashboard} label="Dashboard" onClick={() => api.openDashboard()} />
-              <IconButton icon={Plus} label="New chat (Ctrl+N)" onClick={newChat} />
-              <IconButton icon={X} label="Close (Esc)" onClick={close} />
-            </div>
+        {/* Always there, so a new (empty) chat still has its controls. */}
+        <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-1.5" data-bar-header>
+          <span className="text-[11px] font-medium tracking-wide text-zinc-500">ORBIT</span>
+          <div className="flex items-center gap-0.5">
+            <IconButton icon={LayoutDashboard} label="Dashboard" onClick={() => api.openDashboard()} />
+            <IconButton icon={Plus} label="New chat (Ctrl+N)" onClick={newChat} />
+            <IconButton icon={X} label="Close (Esc)" onClick={close} />
           </div>
-        )}
+        </div>
 
         {hasThread && (
           <div ref={scrollRef} className="max-h-[440px] space-y-4 overflow-y-auto px-4 py-3 text-[13.5px] leading-relaxed">
@@ -621,7 +621,6 @@ export function App(): React.JSX.Element {
                 <ArrowUp size={16} strokeWidth={2.5} />
               </button>
             )}
-            {!hasThread && <IconButton icon={X} label="Close (Esc)" onClick={close} />}
           </div>
         </div>
       </div>
@@ -720,30 +719,6 @@ function MadeFile({ path: initial }: { path: string }): React.JSX.Element {
         </>
       )}
     </span>
-  )
-}
-
-/** A unified diff, git style: removed lines red, added lines green, hunk headers dim. */
-function DiffView({ text, className = '' }: { text: string; className?: string }): React.JSX.Element {
-  return (
-    <div className={`overflow-auto rounded-lg bg-black/40 py-1.5 font-mono text-[11px] leading-[1.45] ${className}`} data-diff>
-      {text.split('\n').map((line, i) => {
-        const cls = line.startsWith('+')
-          ? 'bg-emerald-500/15 text-emerald-200'
-          : line.startsWith('-')
-            ? 'bg-rose-500/15 text-rose-200'
-            : line.startsWith('@@')
-              ? 'text-sky-300/70'
-              : line.startsWith('Careful:')
-                ? 'text-amber-300'
-                : 'text-zinc-400'
-        return (
-          <div key={i} className={`px-2.5 whitespace-pre-wrap break-words ${cls}`}>
-            {line || ' '}
-          </div>
-        )
-      })}
-    </div>
   )
 }
 

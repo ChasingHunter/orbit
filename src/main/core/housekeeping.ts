@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, rmSync, statSync } from 'node:fs'
-import { Notification } from 'electron'
+import { notify } from '../os/notify'
 import { basename, dirname, join } from 'node:path'
 import { settings } from '../settingsStore'
 import { dataDir, paths } from '../paths'
@@ -116,12 +116,13 @@ export async function runCleanup(): Promise<CleanupReport> {
 /** Once a day at most: the files Orbit made are never deleted automatically, so say when space runs low. */
 function warnIfDiskLow(): void {
   const free = freeBytes()
-  if (free > 5 * 1024 ** 3 || !Notification.isSupported()) return
+  if (free > 5 * 1024 ** 3) return
   const mine = dirSize(paths.files)
-  new Notification({
-    title: 'Disk space is getting low',
-    body: `${(free / 1024 ** 3).toFixed(1)} GB free. Orbit's files folder holds ${(mine / 1024 ** 3).toFixed(1)} GB; Orbit stops saving new files and backups below 1 GB free.`
-  }).show()
+  notify(
+    'Disk space is getting low',
+    `${(free / 1024 ** 3).toFixed(1)} GB free. Orbit's files folder holds ${(mine / 1024 ** 3).toFixed(1)} GB; Orbit stops saving new files and backups below 1 GB free.`,
+    'usage'
+  )
 }
 
 let timer: NodeJS.Timeout | undefined

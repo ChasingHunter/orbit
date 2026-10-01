@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { DiffView } from '../../shared/DiffView'
 import { Check, RefreshCw, RotateCcw, ScrollText, ShieldCheck, X } from 'lucide-react'
 import type { AuditItem, ChangeItem } from '@shared/dash'
 import { Button, Card, dash, Empty, inputClass, PageHeader, selectClass } from '../ui'
@@ -11,6 +12,7 @@ export function LogsPage(): React.JSX.Element {
   const [changes, setChanges] = useState<ChangeItem[]>([])
   const [undoError, setUndoError] = useState('')
   const [conflict, setConflict] = useState<{ id: number; message: string } | null>(null)
+  const [openDiff, setOpenDiff] = useState<number | null>(null)
   const load = (): void => {
     void dash.audit(500).then(setItems)
     void dash.changes().then(setChanges)
@@ -68,8 +70,14 @@ export function LogsPage(): React.JSX.Element {
           )}
           <div className="divide-y divide-white/[0.05]">
             {changes.slice(0, 12).map((c) => (
-              <div key={c.id} className="flex items-center gap-3 py-1.5 text-sm">
+              <div key={c.id}>
+              <div className="flex items-center gap-3 py-1.5 text-sm">
                 <span className={`min-w-0 flex-1 truncate ${c.undone_at ? 'text-zinc-500 line-through' : 'text-zinc-200'}`}>{c.summary}</span>
+                {c.diff && (
+                  <button onClick={() => setOpenDiff(openDiff === c.id ? null : c.id)} className="shrink-0 text-xs text-sky-300 hover:underline">
+                    {openDiff === c.id ? 'Hide changes' : 'Show changes'}
+                  </button>
+                )}
                 <span className="shrink-0 text-xs text-zinc-500">
                   {c.source === 'you' ? 'you' : 'Orbit'} · {new Date(c.at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </span>
@@ -82,6 +90,8 @@ export function LogsPage(): React.JSX.Element {
                     </Button>
                   </span>
                 )}
+              </div>
+              {openDiff === c.id && c.diff && <DiffView text={c.diff} className="mb-2 max-h-80" />}
               </div>
             ))}
           </div>

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { notify } from '../os/notify'
 import { EventEmitter } from 'node:events'
 import { Notification } from 'electron'
 import { getDb, now } from '../core/db'
@@ -15,9 +16,7 @@ import { openDashboard } from '../windows/dashboard'
 
 /** Notification that opens the Workflows page when clicked. */
 function notice(title: string, body: string): void {
-  const n = new Notification({ title, body })
-  n.on('click', () => openDashboard('workflows'))
-  n.show()
+  notify(title, body, 'workflows')
 }
 
 export type RunTrigger = 'schedule' | 'manual' | 'missed' | 'event'
@@ -160,7 +159,7 @@ class WorkflowEngine extends EventEmitter {
         if (policy === 'run') void this.run(name, 'missed').catch(() => {})
         else if (policy === 'ask') {
           const when = missedAt?.toLocaleString() ?? 'earlier'
-          new Notification({ title: `${name} didn't run`, body: `It was due ${when} while Orbit was off. Open the bar to run it now.` }).show()
+          notify(`${name} didn't run`, `It was due ${when} while Orbit was off. Open the bar to run it now.`, 'bar')
           this.notify(`${name} was due ${when} but didn't run.`, { label: 'Run now', command: `/run-workflow ${name}` })
         }
       }
@@ -361,7 +360,7 @@ class WorkflowEngine extends EventEmitter {
     if ('approval' in step) {
       const preview = render(step.approval.preview, ctx)
       const title = step.approval.title ? render(step.approval.title, ctx) : 'Review before it continues'
-      new Notification({ title: `${wf.name} needs your review`, body: title }).show()
+      notify(`${wf.name} needs your review`, title, 'bar')
       const timeout = AbortSignal.timeout(durationMs(step.approval.timeout))
       const ok = await requestApproval({ tool: wf.name, title: `${wf.name}: ${title}`, input: { preview } }, AbortSignal.any([signal, timeout]))
       if (ok) return { input: preview, output: preview, attempts: 1 }

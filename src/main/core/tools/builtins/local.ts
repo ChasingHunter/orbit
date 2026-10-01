@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { Notification } from 'electron'
+import { notify as showNotification } from '../../../os/notify'
 import { defineTool } from '../types'
 
 export const notify = defineTool({
@@ -8,7 +8,7 @@ export const notify = defineTool({
   input: { title: z.string(), body: z.string() },
   risk: 'local',
   run: async ({ title, body }) => {
-    new Notification({ title, body }).show()
+    showNotification(title, body, 'bar')
     return 'Notification shown.'
   }
 })

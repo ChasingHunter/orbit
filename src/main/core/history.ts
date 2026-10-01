@@ -33,6 +33,11 @@ export function deleteLastExchange(conversationId: string): void {
     .run(conversationId, conversationId)
 }
 
+/** The model a chat last used, so History shows what actually answered. */
+export function setConversationModel(id: string, model: string): void {
+  getDb().prepare('UPDATE conversations SET model = ? WHERE id = ?').run(model, id)
+}
+
 export function getConversation(id: string): ConversationRow | undefined {
   return getDb().prepare('SELECT * FROM conversations WHERE id = ?').get(id) as ConversationRow | undefined
 }

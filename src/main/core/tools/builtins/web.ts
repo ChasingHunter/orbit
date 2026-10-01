@@ -1,10 +1,10 @@
 import { z } from 'zod'
+import { notify } from '../../../os/notify'
 import { Readability } from '@mozilla/readability'
 import { parseHTML } from 'linkedom'
 import { getSecret } from '../../../secrets'
 import { settings } from '../../../settingsStore'
 import { defineTool } from '../types'
-import { Notification } from 'electron'
 import { getDb } from '../../db'
 
 /** Override for tests: where the Tavily API lives. */
@@ -43,9 +43,7 @@ function allowanceUsedUp(provider: string): string {
   })
   const name = provider === 'tavily' ? 'Tavily' : 'Brave'
   const when = next.toLocaleDateString([], { day: 'numeric', month: 'long' })
-  if (Notification.isSupported()) {
-    new Notification({ title: `${name}'s free searches are used up for this month`, body: `Orbit uses Claude's own search until ${when}. It works the same, but costs more of your Claude plan.` }).show()
-  }
+  notify(`${name}'s free searches are used up for this month`, `Orbit uses Claude's own search until ${when}. It works the same, but costs more of your Claude plan.`, 'setup')
   return `The ${name} search key has used up this month's free searches. From the next message on, Claude's own search is used instead (until ${when}). For now, answer without searching or tell the user.`
 }
 
