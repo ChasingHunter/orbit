@@ -48,8 +48,8 @@ import * as projectsModule from './core/projects'
 import { modelChoices } from './runners/choices'
 import { claudeStatus, runChecks } from './system/health'
 import { openDashboard } from './windows/dashboard'
-import { pasteInto, snapshotClipboard } from './os/writeback'
-import { foregroundWindow, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
+import { pasteInto } from './os/writeback'
+import { foregroundWindow, windowInfo, type Hwnd } from './os/win32'
 import { applyStartWithWindows, handOffToInstalled, repairShortcut, startAutoUpdates } from './os/system'
 
 ensureDataDirs()
@@ -99,8 +99,6 @@ async function captureContext(): Promise<ContextItem[]> {
   prevApp = info.app
   const items: ContextItem[] = []
   if (info.app) items.push({ kind: 'window', id: randomUUID(), app: info.app, title: info.title })
-  // Selection fallback may simulate Ctrl+C; wait until the hotkey's modifiers are up.
-  await waitForModifiersReleased()
   const sel = currentSelection()
   if (sel) items.push({ kind: 'selection', id: randomUUID(), text: sel.text, app: sel.app || info.app })
   return items
@@ -400,7 +398,7 @@ app.whenReady().then(() => {
     // Test hook for scripts/e2e.ts; never set in normal runs.
     Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, runChecks, speaker, recentChanges, undoChange, runCleanup, storageReport,
       measureTools: () => runnableTools(() => []).map((t) => ({ name: t.name, chars: t.description.length + JSON.stringify(z.toJSONSchema(z.object(t.input))).length })),
-      made, snapshotClipboard, onPanic, browserOpen, projects: projectsModule, openPage, telegram,
+      made, onPanic, browserOpen, projects: projectsModule, openPage, telegram,
       callTool: (name: string, input: unknown, source?: 'chat' | 'workflow') => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [], source }) } })
     return
   }

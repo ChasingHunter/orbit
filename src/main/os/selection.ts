@@ -1,13 +1,15 @@
 import SelectionHook from 'selection-hook'
 
-// UIA-first text selection capture (clipboard fallback handled inside selection-hook).
+// Reads the selected text straight from the app (UI Automation, then MSAA). The library's
+// clipboard fallback is off: it copied and restored the clipboard on every bar open, which filled
+// Win+V history. Apps that don't expose their selection simply show no selection chip.
 let hook: InstanceType<typeof SelectionHook> | undefined
 
 export function startSelectionHook(): void {
   try {
     hook = new SelectionHook()
     // Passive: no automatic events on every mouse-up; we only read on demand.
-    hook.start({ selectionPassiveMode: true, enableClipboard: true })
+    hook.start({ selectionPassiveMode: true, enableClipboard: false })
   } catch (err) {
     console.error('[selection] hook failed to start:', err)
     hook = undefined
