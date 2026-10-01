@@ -127,6 +127,8 @@ function warnIfDiskLow(): void {
 
 let timer: NodeJS.Timeout | undefined
 export function startHousekeeping(): void {
+  // Tests run cleanup themselves; a timer firing mid-test would change what they measure.
+  if (process.env.ORBIT_E2E) return
   const run = (): void => void runCleanup()
   setTimeout(run, 60_000).unref()
   timer = setInterval(run, 24 * 3600_000)

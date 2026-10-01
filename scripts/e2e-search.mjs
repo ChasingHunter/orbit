@@ -36,7 +36,7 @@ await bar.fill('textarea', 'Search the web: what is the latest stable version of
 await bar.keyboard.press('Enter')
 await bar.waitForSelector('[data-state="done"]', { timeout: 120_000 })
 const answer = await bar.locator('[data-state="done"]').last().innerText()
-check('Claude searches without a key', /web_search/.test(answer) && /v?\d{2}/.test(answer), answer.replace(/\s+/g, ' ').slice(0, 160))
+check('Claude searches without a key', /web_search/.test(answer) && /v?\d{2}/.test(answer), answer.replace(/\s+/g, ' ').slice(0, 160))
 const audit = readFileSync(join(dataDir, 'logs', 'audit.jsonl'), 'utf8')
 check('the search is in the log', /"tool":"web_search".*"ok":true/.test(audit))
 const usage = await sql("SELECT model, input + output + cache_write AS counted, cache_read FROM usage")

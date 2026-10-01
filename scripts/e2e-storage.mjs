@@ -27,9 +27,11 @@ for (const [d, mb] of [['2020-01-01', 1], ['2026-09-27', 45], ['2026-09-28', 45]
 }
 // Backups: one expired.
 mkdirSync(join(dataDir, 'snapshots'), { recursive: true })
-writeFileSync(join(dataDir, 'snapshots', '1-old.txt'), 'old')
-old(join(dataDir, 'snapshots', '1-old.txt'), 40)
-writeFileSync(join(dataDir, 'snapshots', '2-new.txt'), 'new')
+// Backups are aged by the time in their name, as Orbit names them.
+const OLD_SNAP = `${Date.now() - 40 * 86_400_000}-old.txt`
+const NEW_SNAP = `${Date.now()}-new.txt`
+writeFileSync(join(dataDir, 'snapshots', OLD_SNAP), 'old')
+writeFileSync(join(dataDir, 'snapshots', NEW_SNAP), 'new')
 // Python packages from an older Pyodide.
 mkdirSync(join(models, 'pyodide', '0.1.0'), { recursive: true })
 writeFileSync(join(models, 'pyodide', '0.1.0', 'old.whl'), 'x')
@@ -101,7 +103,7 @@ const logs = readdirSync(join(dataDir, 'logs')).filter((n) => n.startsWith('audi
 check('old rotated logs go, the newest five stay', logs.length === 5 && !logs.includes('audit-2026-00.jsonl'), logs.join(', '))
 const days = readdirSync(join(dataDir, 'attachments')).sort()
 check('attachments: old day and oldest over the cap go, newest stays', days.join(',') === '2026-09-28,2026-09-29', days.join(','))
-check('expired backups go', !existsSync(join(dataDir, 'snapshots', '1-old.txt')) && existsSync(join(dataDir, 'snapshots', '2-new.txt')))
+check('expired backups go', !existsSync(join(dataDir, 'snapshots', OLD_SNAP)) && existsSync(join(dataDir, 'snapshots', NEW_SNAP)))
 check('backups still needed for undo stay', readdirSync(join(dataDir, 'snapshots')).length >= 2)
 const runs = await sql("SELECT workflow, COUNT(*) n FROM workflow_runs GROUP BY workflow ORDER BY workflow")
 check('old workflow runs go, the latest 20 per workflow stay', JSON.stringify(runs) === JSON.stringify([{ workflow: 'hourly-check', n: 20 }, { workflow: 'monthly', n: 5 }]), JSON.stringify(runs))
