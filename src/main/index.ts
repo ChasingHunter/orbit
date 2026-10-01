@@ -37,6 +37,7 @@ import { attachData, attachPaths } from './core/attachments'
 import { runCleanup, startHousekeeping, storageReport } from './core/housekeeping'
 import * as made from './core/madeFiles'
 import { registerPythonScheme } from './python/sandbox'
+import { browserOpen, closeBrowser } from './browser/session'
 import { modelChoices } from './runners/choices'
 import { claudeStatus, runChecks } from './system/health'
 import { openDashboard } from './windows/dashboard'
@@ -164,6 +165,7 @@ function onPanic(): void {
   tasks.cancelAll()
   workflows.cancelAll()
   denyAllApprovals()
+  void closeBrowser()
   new Notification({ title: 'Orbit', body: 'Stopped all running tasks.' }).show()
 }
 
@@ -379,7 +381,7 @@ app.whenReady().then(() => {
     // Test hook for scripts/e2e.ts; never set in normal runs.
     Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, runChecks, speaker, recentChanges, undoChange, runCleanup, storageReport,
       measureTools: () => runnableTools(() => []).map((t) => ({ name: t.name, chars: t.description.length + JSON.stringify(z.toJSONSchema(z.object(t.input))).length })),
-      made, snapshotClipboard,
+      made, snapshotClipboard, onPanic, browserOpen,
       callTool: (name: string, input: unknown, source?: 'chat' | 'workflow') => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [], source }) } })
     return
   }

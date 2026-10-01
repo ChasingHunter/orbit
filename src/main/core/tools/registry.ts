@@ -46,9 +46,10 @@ async function invoke(tool: OrbitTool, rawInput: unknown, opts: CallOptions): Pr
   if (!parsed.success) return { output: `Invalid input: ${parsed.error.message}`, isError: true }
   const input = parsed.data
 
-  const preApproved = !!opts.preApproved && honorsPreApproval()
+  const mustAsk = !!tool.alwaysAsk?.(input)
+  const preApproved = !!opts.preApproved && honorsPreApproval() && !mustAsk
   let decision: 'allowed' | 'approved' = preApproved ? 'approved' : 'allowed'
-  if (policyFor(tool) === 'ask' && !preApproved && !tool.selfApproves && !isAllowedThisChat(tool.name)) {
+  if (mustAsk || (policyFor(tool) === 'ask' && !preApproved && !tool.selfApproves && !isAllowedThisChat(tool.name))) {
     const title = tool.describe?.(input) ?? tool.name
     let preview: string | undefined
     try {
@@ -61,10 +62,10 @@ async function invoke(tool: OrbitTool, rawInput: unknown, opts: CallOptions): Pr
     }
     // Workflows run without a chat to remember "allow for this chat" in, so they only get yes/no.
     const answer = await requestDecision(
-      { tool: tool.name, title: opts.origin ? `${opts.origin}: ${title}` : title, input, preview, allowChat: !opts.origin },
+      { tool: tool.name, title: opts.origin ? `${opts.origin}: ${title}` : title, input, preview, allowChat: !opts.origin && !mustAsk },
       opts.signal
     )
-    if (answer === 'chat') allowForThisChat(tool.name)
+    if (answer === 'chat' && !mustAsk) allowForThisChat(tool.name)
     const ok = answer !== 'deny'
     if (!ok) {
       audit({ tool: tool.name, input, decision: 'denied' })

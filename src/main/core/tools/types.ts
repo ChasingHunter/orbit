@@ -26,6 +26,8 @@ export interface OrbitTool<S extends z.ZodRawShape = z.ZodRawShape> {
   describe?: (input: z.infer<z.ZodObject<S>>) => string
   /** Readable detail for the approval card (a list of renames, the text being replaced), shown instead of the raw input. */
   preview?: (input: z.infer<z.ZodObject<S>>) => string
+  /** Asks before this call whatever the level or earlier "allow for this chat" (e.g. a password field). Only "never" still wins. */
+  alwaysAsk?: (input: z.infer<z.ZodObject<S>>) => boolean
   /** Hidden from the model when this returns false, so unused tools cost no tokens. */
   available?: () => boolean
   run: (input: z.infer<z.ZodObject<S>>, ctx: ToolContext) => Promise<string>

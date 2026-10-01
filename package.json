@@ -34,6 +34,7 @@
     "mammoth": "1.13.0",
     "marked": "18.0.14",
     "marked-katex-extension": "5.1.13",
+    "playwright-core": "1.63.0",
     "pptxgenjs": "4.0.1",
     "pyodide": "314.0.7",
     "quickjs-emscripten-core": "0.32.0",

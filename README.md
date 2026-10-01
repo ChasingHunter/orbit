@@ -101,6 +101,12 @@ Orbit can run Python for anything that needs real calculation: "total these invo
 
 Real PowerShell commands are a different thing: they run with your full permissions and nothing can undo them. They're off until you tick "Let Orbit run commands" on the Permissions page. After that, every command comes with a short plain description the model writes ("Check IP address" above `ipconfig`), and the approval card shows both. The description goes in the log too.
 
+## Using a browser
+
+Orbit can use a browser for things that need clicking around: checking an order status behind a login, filling in a form, finding something on a site that has no API. It runs your installed Edge (or Chrome) in its own window with its own profile, so your normal browser, tabs and logins aren't touched. Sign in to a site once in Orbit's window and it stays signed in.
+
+It reads pages as text plus a numbered list of buttons and fields rather than taking screenshots, which keeps it cheap. Opening and reading pages just happens. Clicking, typing and pressing keys count as acting on a site, so at the default level each one asks first. Password and card fields, and buttons like Pay, Buy or Checkout, ask every time, even at Full autonomy, and the card hides what's being typed into a password field. The stop hotkey closes the browser.
+
 ## Reminders and workflows
 
 "Remind me in 30 minutes to stretch" or "remind me every weekday at 9 to check the deploy" sets a desktop notification. It works offline.

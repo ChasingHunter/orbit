@@ -14,5 +14,6 @@ import { suggestMemory } from './suggest'
 import { listChanges, undoChangeTool } from './undo'
 import { copyFile, createFile, deleteFiles, editFile, moveFiles } from './writeFiles'
 import { runCommand, runPythonTool } from './code'
+import { browserAct, browserLook } from './browser'
 
-export const builtinTools = [webSearch, webFetch, notify, getContext, remember, recall, forget, listIntegrations, startBackgroundTask, spawnAgents, setReminder, listReminders, cancelReminder, workflowGuide, createWorkflow, listWorkflows, runWorkflow, deleteWorkflow, readFeed, saveFile, readSavedFile, makeFile, listFolder, readFile, askUserTool, suggestMemory, listChanges, undoChangeTool, createFile, editFile, moveFiles, deleteFiles, copyFile, runPythonTool, runCommand] as unknown as OrbitTool[]
+export const builtinTools = [webSearch, webFetch, notify, getContext, remember, recall, forget, listIntegrations, startBackgroundTask, spawnAgents, setReminder, listReminders, cancelReminder, workflowGuide, createWorkflow, listWorkflows, runWorkflow, deleteWorkflow, readFeed, saveFile, readSavedFile, makeFile, listFolder, readFile, askUserTool, suggestMemory, listChanges, undoChangeTool, createFile, editFile, moveFiles, deleteFiles, copyFile, runPythonTool, runCommand, browserLook, browserAct] as unknown as OrbitTool[]
