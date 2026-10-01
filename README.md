@@ -79,7 +79,7 @@ If you'd rather use [Wispr Flow](https://wisprflow.ai), set `voice.engine` to `"
 
 ## Memory
 
-Tell Orbit "remember that Sam is my cofounder, his email is sam@example.com" and it saves that on your PC. Later, when you ask something related ("email Sam the notes"), the matching memories go along with your question, so you don't have to repeat yourself. You can see, edit and delete everything it knows in the dashboard.
+Tell Orbit "remember that Sam is my cofounder, his email is sam@example.com" and it saves that on your PC. From then on Orbit knows it in every chat, however you phrase the question ("email Sam the notes", "who's my cofounder?"), so you don't have to repeat yourself. If you save a lot, the rest are looked up when they match what you ask. Memories saved while a project is active belong to that project. You can see, edit and delete everything it knows in the dashboard.
 
 When you mention something worth keeping in passing ("my dentist is Dr. Mehta, 022 5555 0100"), Orbit shows a small "Remember this?" chip. It only saves if you click Save.
 
