@@ -180,7 +180,7 @@ export async function runChecks(): Promise<Check[]> {
       id: 'search',
       name: 'Web search key',
       status: searchKey ? 'ok' : 'optional',
-      detail: searchKey ? `${settings.current.tools.webSearch.provider} key saved.` : 'No key, so Claude models use Claude's own search: it works, but each search costs about 12k tokens of your plan. With a free key it's about 1k, and Ollama, API-key models and workflows can search too.',
+      detail: searchKey ? `${settings.current.tools.webSearch.provider} key saved.` : "No key, so Claude models use Claude's own search: it works, but each search costs about 12k tokens of your plan. With a free key it's about 1k, and Ollama, API-key models and workflows can search too.",
       why: 'Cheaper web search (about a tenth of the tokens), and search for Ollama, API-key models and workflows. Brave and Tavily both have free tiers.',
       action: searchKey ? undefined : { label: 'Get a free Brave key', kind: 'url', target: 'https://brave.com/search/api/' }
     },
