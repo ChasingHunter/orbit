@@ -1,4 +1,4 @@
-import { app, BrowserWindow, net, protocol, session } from 'electron'
+import { app, BrowserWindow, net, session } from 'electron'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -24,10 +24,11 @@ let version = ''
 let lock: Record<string, LockPackage> = {}
 let byFile = new Map<string, LockPackage>()
 
-/** Call before app ready: the scheme needs fetch and CORS support for Pyodide's loader. */
-export function registerPythonScheme(): void {
-  protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }])
-}
+/**
+ * Registered before app ready, together with the other custom schemes (Electron keeps only the
+ * last registerSchemesAsPrivileged call). Pyodide's loader needs fetch and CORS on it.
+ */
+export const pythonScheme: Electron.CustomScheme = { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }
 
 function load(): void {
   if (pyodideDir) return

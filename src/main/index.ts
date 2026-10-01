@@ -1,4 +1,4 @@
-import { app, clipboard, globalShortcut, ipcMain, Notification, shell, dialog } from 'electron'
+import { app, clipboard, globalShortcut, ipcMain, Notification, shell, dialog, protocol } from 'electron'
 import { randomUUID } from 'node:crypto'
 import type { ContextItem } from '@shared/types'
 import type { DashPage } from '@shared/dash'
@@ -36,8 +36,8 @@ import { registerDashboardIpc, setVoiceInstaller } from './dashboardIpc'
 import { attachData, attachPaths } from './core/attachments'
 import { runCleanup, startHousekeeping, storageReport } from './core/housekeeping'
 import * as made from './core/madeFiles'
-import { registerPythonScheme } from './python/sandbox'
-import { openPage, registerPageScheme } from './windows/page'
+import { pythonScheme } from './python/sandbox'
+import { openPage, pageScheme } from './windows/page'
 import { setPageOpener } from './core/tools/builtins/files'
 import { browserOpen, closeBrowser } from './browser/session'
 import { telegram } from './phone/telegram'
@@ -52,8 +52,8 @@ import { applyStartWithWindows, startAutoUpdates } from './os/system'
 
 ensureDataDirs()
 installLogging((message) => sendToBar({ type: 'notice', level: 'error', text: `Internal error: ${message}` }))
-registerPythonScheme()
-registerPageScheme()
+// One call for all custom schemes: a second call would replace the first.
+protocol.registerSchemesAsPrivileged([pythonScheme, pageScheme])
 
 // Keep Chromium caches out of the user-facing data folder.
 app.setPath('userData', join(dataDir, 'chromium'))

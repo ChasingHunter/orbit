@@ -1,4 +1,4 @@
-import { BrowserWindow, protocol, session } from 'electron'
+import { BrowserWindow, session } from 'electron'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { basename, dirname, extname, join } from 'node:path'
@@ -11,10 +11,8 @@ import { basename, dirname, extname, join } from 'node:path'
 const SCHEME = 'orbit-page'
 const PARTITION = 'orbit-pages'
 
-/** Call before app ready. */
-export function registerPageScheme(): void {
-  protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }])
-}
+/** Registered before app ready, in the same call as the other custom schemes. */
+export const pageScheme: Electron.CustomScheme = { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }
 
 const files = new Map<string, string>()
 let ready = false

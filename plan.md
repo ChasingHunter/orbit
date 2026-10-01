@@ -9,7 +9,8 @@ Done: Day 1, 2, 3 and most of Phase 2. Bar + context capture, voice (Parakeet lo
 Added since the plan: autonomy levels (strict / careful / trusted / full) over risk classes (read / local / external / destructive) + per-tool overrides + "allow for this chat"; undo journal for everything in Orbit's own space; token usage page + daily background budget; Setup page (dependency checks, Claude sign-in, bundled vs installed Claude Code).
 v0.8 done (items 1 to 5 below): attachments, chat polish (retry, edit, model picker, KaTeX), writable folders with snapshots, make_file (docx/pdf/xlsx/pptx), run_python (Pyodide in a sandboxed Chromium page) and opt-in run_command with model-written descriptions.
 v0.9 done (items 6 to 11): web search without a key (Claude's WebSearch, gated by Orbit's policy), 20 one-click hosted MCP connectors + "Add your own", browser actions (Edge/Chrome via playwright-core, look/act split, sensitive controls always ask), skills (Orbit folder + ~/.claude/skills, lazy use_skill), deep research (estimate + cap), projects (FTS-indexed pinned files, scoped memories/chats). Also since 0.8: daily housekeeping + disk guard, temporary chat files.
-Not yet: headless server mode, phone bridge, macOS, code signing. Next: v1.0, items 12 to 14 below.
+v0.10: pages (make_page, locked-down orbit-page: window, bundled Chart.js) and the Telegram phone bridge (items 12, 13). Item 14 (computer use for other apps) is waiting on a decision: the browser covers most of it and it is the riskiest item.
+Not yet: computer use (item 14), headless server mode, macOS, code signing.
 
 ## Next: closing the gap with Claude (v0.8 to v1.0)
 
