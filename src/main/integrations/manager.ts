@@ -196,6 +196,7 @@ class IntegrationManager extends EventEmitter {
         const readOnly = t.annotations?.readOnlyHint === true
         out.push({
           name: toolName(id, t.name),
+          service: { id, name: l.config.name, tool: t.name, inputSchema: t.inputSchema },
           description: `[${l.config.name}] ${t.description ?? t.title ?? t.name}`.slice(0, 1024),
           input: toShape(t.inputSchema),
           // The server's own labels decide the risk: read-only, destructive, or acting in the service.

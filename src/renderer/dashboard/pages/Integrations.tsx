@@ -54,7 +54,7 @@ export function IntegrationsPage(): React.JSX.Element {
             </Card>
           ))}
           <p className="text-xs text-zinc-500">
-            Each connected service's tools go along with every message you send, which costs tokens. Turn off the ones you aren't using.
+            Orbit only loads a service's tools when a task needs them, so connected services cost almost nothing until you use them.
           </p>
         </div>
       )}
@@ -163,7 +163,7 @@ function StatusLine({ state }: { state: IntegrationState }): React.JSX.Element {
       {s.label}
       {state.status === 'connected' && (
         <span className="text-zinc-500">
-          · {state.toolCount} tools, about {state.tokens >= 1000 ? `${(state.tokens / 1000).toFixed(1)}k` : state.tokens} tokens per message
+          · {state.toolCount} tools, about {state.tokens >= 1000 ? `${(state.tokens / 1000).toFixed(1)}k` : state.tokens} tokens when a task uses them
         </span>
       )}
       {state.error && <span className="truncate text-zinc-500">· {state.error}</span>}

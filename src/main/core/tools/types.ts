@@ -28,6 +28,8 @@ export interface OrbitTool<S extends z.ZodRawShape = z.ZodRawShape> {
   preview?: (input: z.infer<z.ZodObject<S>>) => string
   /** Asks before this call whatever the level or earlier "allow for this chat" (e.g. a password field). Only "never" still wins. */
   alwaysAsk?: (input: z.infer<z.ZodObject<S>>) => boolean
+  /** Set on a connected service's tools. Those reach the model through service_tools/service_call unless loaded up front. */
+  service?: { id: string; name: string; tool: string; inputSchema: unknown }
   /** Hidden from the model when this returns false, so unused tools cost no tokens. */
   available?: () => boolean
   run: (input: z.infer<z.ZodObject<S>>, ctx: ToolContext) => Promise<string>

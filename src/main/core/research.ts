@@ -70,7 +70,8 @@ export async function runResearch(question: string, depth: Depth, signal: AbortS
       const part = parts[next++]
       progress(`Researching ${findings.length + 1} of ${parts.length}: ${part}`)
       try {
-        const text = await runAgent(`Overall question: ${question}\n\nYour sub-question: ${part}`, 'chat', signal, {
+        // Gathering is simple work, so it runs on the quick model; the writer uses the research one.
+        const text = await runAgent(`Overall question: ${question}\n\nYour sub-question: ${part}`, 'quick', signal, {
           tools: ['web_search', 'web_fetch'],
           system: SEARCHER,
           label: `${label} (search)`

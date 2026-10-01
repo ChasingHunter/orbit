@@ -83,6 +83,8 @@ function composeTurn(text: string, context: ContextItem[], memories: Memory[]): 
   return { text: prefix + text, images }
 }
 
+const LONG_CHAT_TOKENS = Number(process.env.ORBIT_E2E_LONG_CHAT) || 60_000
+
 /** The bar's current conversation: one runner session, one active turn at a time. */
 export class Conversation {
   private session: RunnerSession | undefined
@@ -197,14 +199,21 @@ export class Conversation {
         const session = this.ensureSession(pick.ref, pick.tools)
         const turn = composeTurn(text, context, memories)
         if (carry) turn.text = `<earlier_conversation note="the user reopened this chat; continue from it">\n${carry}\n</earlier_conversation>\n\n${turn.text}`
+        let requests = 1
+        let read = 0
         for await (const ev of session.send(turn, abort.signal)) {
           if (ev.type === 'text') answer += ev.delta
-          if (ev.type === 'usage') recordUsage('chat', text, ev)
+          if (ev.type === 'tool-call') requests++
+          if (ev.type === 'usage') {
+            recordUsage('chat', text, ev)
+            read += ev.input + ev.cacheRead + ev.cacheWrite
+          }
           if (ev.type === 'rate-limit') void this.offerFallback(ev.resetsAt)
           this.emit(turnId, ev)
           if (ev.type === 'done') break
         }
         if (answer.trim()) addMessage(conversationId, 'assistant', answer)
+        this.maybeNudge(read / requests)
       } catch (err) {
         this.emit(turnId, { type: 'error', message: err instanceof Error ? err.message : String(err) })
         this.emit(turnId, { type: 'done' })
@@ -213,6 +222,20 @@ export class Conversation {
       }
     })()
     return turnId
+  }
+
+  /** Set once this chat has been told it's getting long. */
+  private nudged = false
+
+  /**
+   * Every message re-reads the whole chat, so a long one costs more each time. Once a message reads
+   * about 60k tokens (one model request is roughly that turn's tokens over its tool calls plus one),
+   * suggest starting over, once per chat.
+   */
+  private maybeNudge(perRequest: number): void {
+    if (this.nudged || perRequest < LONG_CHAT_TOKENS) return
+    this.nudged = true
+    this.notify(`This chat is getting long: each message now re-reads about ${Math.round(perRequest / 1000)}k tokens. A new chat is much cheaper, and your memories carry over.`, { label: 'New chat', command: '/new' })
   }
 
   private async offerFallback(resetsAt?: number): Promise<void> {
@@ -264,5 +287,6 @@ export class Conversation {
     this.conversationId = undefined
     this.quickChat = false
     this.chatModel = undefined
+    this.nudged = false
   }
 }

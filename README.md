@@ -147,7 +147,7 @@ Slack and Google take a few minutes of setup, because neither lets outside apps 
 
 For anything else that speaks MCP, use "Add your own" at the bottom: paste the address it's hosted at, or the command that runs it on your PC. If a service isn't connected and you ask for something that needs it, Orbit tells you instead of pretending.
 
-Every connected service sends its list of tools along with each message, so each one costs some tokens every time you ask something. The card shows roughly how many. Turn off the ones you aren't using.
+Connecting more services doesn't make every message more expensive: Orbit only knows their names until a task needs one, then looks up that service's tools. The card shows roughly what that costs when it happens.
 
 ## From your phone
 
@@ -196,7 +196,9 @@ Orbit cleans up after itself once a day, so its logs, backups and attachment cop
 
 ## How many tokens it uses
 
-I built this to run on a Claude subscription, so it tries hard not to waste it. Claude Code's extras that cost tokens in the background (chat titles, prompt suggestions, auto memory and so on) are switched off. Tool descriptions are kept short, and the long workflow guide is only loaded when the model is actually writing a workflow. Quick actions go to Haiku.
+I built this to run on a Claude subscription, so it tries hard not to waste it. Claude Code's extras that cost tokens in the background (chat titles, prompt suggestions, auto memory and so on) are switched off. Tool descriptions are kept short, and anything big only loads when it's needed: the workflow guide, a skill's instructions, and the tools of each service you've connected. Long web pages and files come back a piece at a time instead of all at once. Quick actions and the search agents in deep research go to Haiku.
+
+Every message re-reads the whole chat, so long chats get expensive. When a chat gets big, Orbit says so once and offers a New chat button; your memories carry over.
 
 In practice a follow-up message costs about 5k tokens, and nearly all of that comes from the prompt cache (which counts far less against your limits). Starting a new chat costs under 1k new tokens.
 

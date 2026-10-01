@@ -8,7 +8,8 @@ import type { OrbitTool, RunnableTool, ToolContext, ToolResult } from './types'
 import { builtinTools } from './builtins'
 import { integrations } from '../../integrations/manager'
 
-const MAX_OUTPUT = 40_000
+/** About 6k tokens: tool results stay in the chat and are re-read with every later message. */
+const MAX_OUTPUT = 24_000
 
 /** Claude sees Orbit tools as mcp__orbit__<name>; accept that spelling anywhere a name is given. */
 export function normalizeToolName(name: string): string {
@@ -76,7 +77,7 @@ async function invoke(tool: OrbitTool, rawInput: unknown, opts: CallOptions): Pr
 
   try {
     let output = await tool.run(input, { signal: opts.signal, context: opts.context, source: opts.source ?? 'workflow' })
-    if (output.length > MAX_OUTPUT) output = output.slice(0, MAX_OUTPUT) + '\n…[truncated]'
+    if (output.length > MAX_OUTPUT) output = `${output.slice(0, MAX_OUTPUT)}\n…[cut at ${MAX_OUTPUT} of ${output.length} characters; ask for less, e.g. with a filter or a smaller page size]`
     audit({ tool: tool.name, input, decision, ok: true, output })
     return { output, isError: false }
   } catch (err) {
@@ -129,7 +130,13 @@ export function runnableTools(
   source: ToolContext['source'] = 'chat'
 ): RunnableTool[] {
   return allTools()
-    .filter((t) => policyFor(t) !== 'never' && (t.available?.() ?? true) && !exclude.includes(t.name) && (!only || only.map(normalizeToolName).includes(t.name)))
+    .filter((t) => {
+      if (policyFor(t) === 'never' || !(t.available?.() ?? true) || exclude.includes(t.name)) return false
+      if (only) return only.map(normalizeToolName).includes(t.name)
+      // A connected service's tools are reached through service_tools/service_call, so their
+      // descriptions don't ride along with every message. Naming them explicitly (above) still works.
+      return !(t.service && settings.current.tools.connectorsOnDemand)
+    })
     .map((tool) => ({
       name: tool.name,
       description: tool.description,

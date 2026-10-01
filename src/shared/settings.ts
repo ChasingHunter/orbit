@@ -110,6 +110,8 @@ export const Settings = z.object({
           memoryMb: z.number().int().min(256).max(4096).default(1024)
         })
         .prefault({}),
+      /** Connected services' tools are looked up when a task needs them instead of going with every message. */
+      connectorsOnDemand: z.boolean().default(true),
       /** Real PowerShell commands. Off until you turn it on in Permissions. */
       commands: z
         .object({

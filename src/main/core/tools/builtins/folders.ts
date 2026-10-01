@@ -97,10 +97,10 @@ export const readFile = defineTool({
   input: {
     path: z.string().describe('Full path, or a path inside an allowed folder'),
     offset: z.number().int().min(0).optional().describe('Character to start from, to continue a truncated read'),
-    maxChars: z.number().int().min(1000).max(100_000).optional().describe('Default 30000')
+    maxChars: z.number().int().min(1000).max(20_000).optional().describe('Default 12000')
   },
   risk: 'read',
-  run: async ({ path, offset = 0, maxChars = 30_000 }) => {
+  run: async ({ path, offset = 0, maxChars = 12_000 }) => {
     const file = checked(path)
     const size = statSync(file).size
     if (size > MAX_BYTES) throw new Error(`File is ${Math.round(size / 1e6)} MB; the limit is 25 MB`)
