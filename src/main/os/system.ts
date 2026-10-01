@@ -6,7 +6,8 @@ import { showUpdateInTray } from './tray'
 // Start with Windows and updates from GitHub Releases. Both only apply to the installed app.
 
 export function applyStartWithWindows(): void {
-  if (!app.isPackaged) return
+  // Tests run packaged builds from dist/ on the user's PC; they must never repoint the real login item.
+  if (!app.isPackaged || process.env.ORBIT_E2E) return
   app.setLoginItemSettings({ openAtLogin: settings.current.ui.startWithWindows, args: ['--hidden'] })
 }
 
