@@ -4,7 +4,7 @@ Orbit is a small assistant that sits in your Windows tray. Press a hotkey, say o
 
 I wanted something like the Gemini or Copilot sidebar, but for every app on my PC, open source, and not tied to one AI company. You can point it at your Claude subscription, an API key, or a model running locally in Ollama, and everything else works the same.
 
-It's early (version 0.8). It can remember things about you, read the files you attach, make Word, Excel, PowerPoint and PDF files, run Python in a sandbox, change files in folders you allow (with undo), work in the background, use Notion, Slack, Gmail and Google Calendar, set reminders, and run n8n-style workflows that you build by asking or on a canvas. The full roadmap is in [plan.md](plan.md).
+It's early (version 0.9). It can remember things about you, read the files you attach, make Word, Excel, PowerPoint and PDF files, run Python in a sandbox, change files in folders you allow (with undo), use a browser, research a question and write up a report, keep projects with their own files and instructions, work in the background, use Notion, Slack, Gmail and Google Calendar, set reminders, and run n8n-style workflows that you build by asking or on a canvas. The full roadmap is in [plan.md](plan.md).
 
 ## Install
 
