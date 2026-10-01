@@ -161,6 +161,15 @@ export const Settings = z.object({
     })
     .prefault({}),
 
+  /** Orbit from your phone through your own Telegram bot (token in the secret store as "telegram"). */
+  phone: z
+    .object({
+      enabled: z.boolean().default(false),
+      /** The one Telegram chat the bot answers; 0 until paired. */
+      chatId: z.number().default(0)
+    })
+    .prefault({}),
+
   /** Which skills are on: Orbit's own unless listed in off; Claude's only if listed in onFromClaude. Keys are "source:name". */
   skills: z
     .object({

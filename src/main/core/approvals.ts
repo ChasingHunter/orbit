@@ -12,6 +12,13 @@ export function setApprovalPresenter(fn: (req: ApprovalRequest) => void): void {
   presenter = fn
 }
 
+const watchers = new Set<(req: ApprovalRequest) => void>()
+/** Other places that can answer approvals too (the phone bridge). First answer wins. */
+export function watchApprovals(fn: (req: ApprovalRequest) => void): () => void {
+  watchers.add(fn)
+  return () => watchers.delete(fn)
+}
+
 export function requestDecision(req: Omit<ApprovalRequest, 'id'>, signal: AbortSignal): Promise<ApprovalDecision> {
   if (!presenter) return Promise.resolve('deny')
   const id = randomUUID()
@@ -25,6 +32,7 @@ export function requestDecision(req: Omit<ApprovalRequest, 'id'>, signal: AbortS
     signal.addEventListener('abort', onAbort)
     pending.set(id, done)
     presenter!({ id, ...req })
+    for (const w of watchers) w({ id, ...req })
   })
 }
 

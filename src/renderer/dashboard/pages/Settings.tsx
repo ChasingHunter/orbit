@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Download, FileCog, FolderOpen, FolderPlus, Volume2, X } from 'lucide-react'
-import type { DashSettings } from '@shared/dash'
+import type { DashSettings, PhoneInfo } from '@shared/dash'
 import { Button, Card, dash, inputClass, PageHeader, selectClass } from '../ui'
 
 const PURPOSES: { id: keyof DashSettings['models']; label: string; hint: string }[] = [
@@ -166,6 +166,8 @@ export function SettingsPage(): React.JSX.Element {
         </div>
       </Section>
 
+      <PhoneSection />
+
       <Section title="Hotkeys" hint="Click Change, then press the new combination. It needs Ctrl, Alt or Win so it doesn't clash with normal typing.">
         <div className="grid gap-2 text-sm">
           <HotkeyRow action="bar" label="Open the bar and talk" value={s.hotkeys.bar} />
@@ -281,5 +283,71 @@ function ModelField(props: { label: string; hint: string; value: string; onSave:
         )}
       </div>
     </label>
+  )
+}
+
+function PhoneSection(): React.JSX.Element {
+  const [p, setP] = useState<PhoneInfo | null>(null)
+  const [token, setToken] = useState('')
+  const [error, setError] = useState('')
+  const load = (): void => void dash.phone().then(setP)
+  useEffect(() => {
+    load()
+    return dash.onChanged((w) => w === 'settings' && load())
+  }, [])
+  if (!p) return <></>
+  const save = (): void => {
+    setError('')
+    dash.savePhoneToken(token).then(
+      () => (setToken(''), load()),
+      (err: Error) => setError(err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+    )
+  }
+  return (
+    <Section
+      title="Phone (Telegram)"
+      hint="Talk to Orbit from your phone through a Telegram bot of your own. It works while Orbit is running on this PC, answers only the chat you pair, and approvals show up as buttons in Telegram. Messages go through Telegram's servers."
+    >
+      {!p.hasToken ? (
+        <div className="grid gap-2 text-sm text-zinc-300">
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>In Telegram, message @BotFather, send /newbot and pick a name.</li>
+            <li>Copy the token it gives you and paste it here.</li>
+          </ol>
+          <div className="flex gap-2">
+            <input type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} placeholder="123456789:ABC..." className={inputClass} aria-label="Bot token" />
+            <Button variant="primary" onClick={save}>
+              Save
+            </Button>
+          </div>
+          {error && <p className="text-rose-300">{error}</p>}
+        </div>
+      ) : (
+        <div className="grid gap-2 text-sm text-zinc-300" data-phone={p.paired ? 'paired' : 'waiting'}>
+          {p.error ? (
+            <p className="text-rose-300">Can't reach Telegram: {p.error}</p>
+          ) : p.paired ? (
+            <p>Paired{p.botName ? ` with @${p.botName}` : ''}. Message the bot from your phone.</p>
+          ) : p.enabled ? (
+            <p>
+              Now send <code className="rounded bg-white/5 px-1">{p.code}</code> to {p.botName ? `@${p.botName}` : 'your bot'} in Telegram to pair your phone.
+            </p>
+          ) : (
+            <p>Turned off.</p>
+          )}
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-zinc-400">
+              <input type="checkbox" checked={p.enabled} onChange={(e) => void dash.setPhoneEnabled(e.target.checked)} className="accent-sky-500" />
+              On
+            </label>
+            {p.paired && (
+              <Button variant="ghost" onClick={() => void dash.unpairPhone()}>
+                Unpair
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </Section>
   )
 }

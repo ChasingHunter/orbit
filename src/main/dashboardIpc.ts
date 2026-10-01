@@ -22,11 +22,13 @@ import { TEMPLATES } from './workflows/templates'
 import { describeTrigger } from './workflows/describe'
 import { triggers } from './workflows/triggers'
 import { scheduler } from './core/scheduler'
-import type { PermissionsInfo, UsageInfo, WorkflowInfo } from '@shared/dash'
+import type { PhoneInfo, PermissionsInfo, UsageInfo, WorkflowInfo } from '@shared/dash'
 import { snapshotBytes } from './core/userFiles'
 import { runCleanup, storageReport } from './core/housekeeping'
 import { claudeSkillsDir, listSkills, orbitSkillsDir } from './core/skills'
 import { addPath, deleteProject, listProjects, removePath, saveProject } from './core/projects'
+import { telegram } from './phone/telegram'
+import { getSecret } from './secrets'
 import { bundledClaudeVersion, findInstalledClaude, installedClaudeVersion, openUrl, runChecks, signInToClaude } from './system/health'
 import { levelDefault, policyOf } from './core/permissions'
 import { backgroundTokensToday, usageSummary } from './core/usage'
@@ -251,6 +253,33 @@ export function registerDashboardIpc(): void {
     mkdirSync(dir, { recursive: true })
     void shell.openPath(dir)
   })
+  const phoneInfo = (): PhoneInfo => ({
+    enabled: settings.current.phone.enabled,
+    hasToken: !!getSecret('telegram'),
+    paired: !!settings.current.phone.chatId,
+    code: telegram.code,
+    botName: telegram.botName,
+    error: telegram.lastError
+  })
+  telegram.on('change', () => notifyDashboard('settings'))
+  ipcMain.handle('dash:phone', () => phoneInfo())
+  ipcMain.handle('dash:phone-token', (_e, token: string) => {
+    const t = token.trim()
+    if (!/^\d+:[\w-]{20,}$/.test(t)) throw new Error("That doesn't look like a bot token (it's like 123456789:ABC...).")
+    setSecret('telegram', t)
+    settings.update((d) => {
+      d.phone.enabled = true
+      d.phone.chatId = 0
+    })
+    telegram.restart()
+  })
+  ipcMain.handle('dash:phone-enabled', (_e, on: boolean) => {
+    settings.update((d) => {
+      d.phone.enabled = on
+    })
+    telegram.restart()
+  })
+  ipcMain.handle('dash:phone-unpair', () => telegram.unpair())
   ipcMain.handle('dash:projects', () => listProjects())
   ipcMain.handle('dash:project-save', (_e, p: { id?: string; name: string; instructions: string }) => {
     const id = saveProject(p)

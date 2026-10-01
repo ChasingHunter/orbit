@@ -149,6 +149,12 @@ For anything else that speaks MCP, use "Add your own" at the bottom: paste the a
 
 Every connected service sends its list of tools along with each message, so each one costs some tokens every time you ask something. The card shows roughly how many. Turn off the ones you aren't using.
 
+## From your phone
+
+You can talk to Orbit from your phone through a Telegram bot of your own. Create one with @BotFather in Telegram (send /newbot, it takes a minute), paste its token under Settings, Phone, then send the bot the six-digit code Orbit shows you. From then on the bot answers that one chat and ignores everyone else. If Orbit needs your OK for something, Approve and Deny buttons show up right in Telegram. Send /new to start over and /stop to cancel.
+
+Your PC has to be on with Orbit running, since that's where the work happens. Nothing listens on your PC (Orbit checks Telegram for new messages itself), and messages travel through Telegram's servers like any other Telegram chat.
+
 ## Choosing a model
 
 In `settings.json`, `models.chat` looks like `"claude:sonnet"` or `"ollama:qwen3:4b"`: the provider name, a colon, then the model.

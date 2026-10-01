@@ -110,6 +110,8 @@ export type TemplateInfo = { id: string; title: string; summary: string; install
 
 export type AuditItem = { at: string; tool: string; decision: 'allowed' | 'approved' | 'denied' | 'blocked'; ok?: boolean; input: unknown; output?: string }
 
+export type PhoneInfo = { enabled: boolean; hasToken: boolean; paired: boolean; code: string; botName: string; error: string }
+
 export type ProjectInfo = { id: string; name: string; instructions: string; paths: string[]; files: number; chunks: number }
 
 export type SkillInfo = { key: string; name: string; description: string; source: 'orbit' | 'claude'; enabled: boolean }
@@ -197,6 +199,10 @@ export interface DashApi {
   storage(): Promise<StorageInfo>
   skills(): Promise<{ skills: SkillInfo[]; orbitDir: string; claudeDir: string }>
   projects(): Promise<ProjectInfo[]>
+  phone(): Promise<PhoneInfo>
+  savePhoneToken(token: string): Promise<void>
+  setPhoneEnabled(on: boolean): Promise<void>
+  unpairPhone(): Promise<void>
   saveProject(p: { id?: string; name: string; instructions: string }): Promise<string>
   deleteProject(id: string): Promise<void>
   /** Opens a picker and pins what's chosen (a folder, or files). */

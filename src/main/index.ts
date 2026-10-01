@@ -40,6 +40,7 @@ import { registerPythonScheme } from './python/sandbox'
 import { openPage, registerPageScheme } from './windows/page'
 import { setPageOpener } from './core/tools/builtins/files'
 import { browserOpen, closeBrowser } from './browser/session'
+import { telegram } from './phone/telegram'
 import { activeProject, listProjects, setActiveProject } from './core/projects'
 import * as projectsModule from './core/projects'
 import { modelChoices } from './runners/choices'
@@ -339,6 +340,7 @@ function registerIpc(): void {
 app.whenReady().then(() => {
   ensureDataDirs()
   startHousekeeping()
+  telegram.restart()
   // Tests check pages through the hook instead of popping windows up on the user's screen.
   setPageOpener((p) => {
     if (!process.env.ORBIT_E2E) openPage(p)
@@ -398,7 +400,7 @@ app.whenReady().then(() => {
     // Test hook for scripts/e2e.ts; never set in normal runs.
     Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, runChecks, speaker, recentChanges, undoChange, runCleanup, storageReport,
       measureTools: () => runnableTools(() => []).map((t) => ({ name: t.name, chars: t.description.length + JSON.stringify(z.toJSONSchema(z.object(t.input))).length })),
-      made, snapshotClipboard, onPanic, browserOpen, projects: projectsModule, openPage,
+      made, snapshotClipboard, onPanic, browserOpen, projects: projectsModule, openPage, telegram,
       callTool: (name: string, input: unknown, source?: 'chat' | 'workflow') => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [], source }) } })
     return
   }
