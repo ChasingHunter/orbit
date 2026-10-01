@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { activeProject, getProject, searchProject } from './projects'
 import { randomUUID } from 'node:crypto'
 import type { AgentEvent, ContextItem, ImageInput } from '@shared/types'
 import { paths } from '../paths'
@@ -15,6 +16,19 @@ import type { RunnableTool } from './tools/types'
 type Emit = (turnId: string, event: AgentEvent) => void
 type Notify = (text: string, action?: { label: string; command: string }) => void
 
+function projectPrompt(): string {
+  const id = activeProject()
+  const p = id ? getProject(id) : undefined
+  if (!p) return ''
+  return [
+    `You're working in the user's project "${p.name}".`,
+    p.instructions.trim() && `Project instructions from the user:\n${p.instructions.trim()}`,
+    p.paths.length ? 'A <project_files> block, when present, holds the parts of the project\'s pinned files that match the message. Use search_project to look for more, and read_file to read a whole file.' : ''
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
 function systemPrompt(): string {
   const { name } = settings.current.persona
   const persona = existsSync(paths.persona) ? readFileSync(paths.persona, 'utf8').trim() : ''
@@ -25,7 +39,8 @@ function systemPrompt(): string {
     'A <memories> block, when present, holds facts the user saved earlier. Use them when relevant. If the user mentions a durable fact about themselves, people, preferences or projects that is not already in <memories>, call suggest_memory so they can save it with one click. Use the remember tool directly only when they explicitly ask you to remember something.',
     'An <active_tab> tag is the page open in their browser. If they ask about "this page" or "this article" and the selection or screenshot is not enough, read it with web_fetch.',
     'When asked to rewrite, fix, translate or transform selected text, reply with only the resulting text (no preamble or quotes) so it can be pasted back in place.',
-    persona && `User-provided persona and preferences:\n${persona}`
+    persona && `User-provided persona and preferences:\n${persona}`,
+    projectPrompt()
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -42,6 +57,11 @@ export function localNow(d = new Date()): string {
 
 function composeTurn(text: string, context: ContextItem[], memories: Memory[]): { text: string; images: ImageInput[] } {
   const parts: string[] = [`<now>${localNow()}</now>`]
+  const project = activeProject()
+  const chunks = project ? searchProject(project, text) : []
+  if (chunks.length) {
+    parts.push(`<project_files>\n${chunks.map((c) => `<untrusted_file path="${c.path}">\n${c.text}\n</untrusted_file>`).join('\n')}\n</project_files>`)
+  }
   if (memories.length) {
     const lines = memories.map((m) => `#${m.id} ${m.text}`).join('\n')
     parts.push(`<memories note="saved facts about the user that may be relevant">\n${lines}\n</memories>`)
@@ -124,7 +144,8 @@ export class Conversation {
    */
   private ensureSession(ref: string, withTools = true): RunnerSession {
     const tools = withTools ? this.tools() : []
-    const key = tools.map((t) => t.name).join(',')
+    // The project is part of the system prompt, so switching it needs a new session.
+    const key = `${activeProject() ?? ''}|${tools.map((t) => t.name).join(',')}`
     if (this.session && this.modelRef === ref && this.toolsKey === key) return this.session
     this.session?.close()
     const { runner, model } = resolveModel(ref)
@@ -160,7 +181,7 @@ export class Conversation {
     this.abort = abort
 
     const modelRef = this.override ?? settings.current.models.chat
-    this.conversationId ??= createConversation(text, modelRef)
+    this.conversationId ??= createConversation(text, modelRef, activeProject())
     const conversationId = this.conversationId
     const attached = context.flatMap((c) => (c.kind === 'file' ? [c.name] : c.kind === 'screenshot' && c.name ? [c.name] : []))
     addMessage(conversationId, 'user', attached.length ? `${text}\n\n(attached: ${attached.join(', ')})` : text)

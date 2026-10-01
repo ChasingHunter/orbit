@@ -109,6 +109,10 @@ Orbit can use a browser for things that need clicking around: checking an order 
 
 It reads pages as text plus a numbered list of buttons and fields rather than taking screenshots, which keeps it cheap. Opening and reading pages just happens. Clicking, typing and pressing keys count as acting on a site, so at the default level each one asks first. Password and card fields, and buttons like Pay, Buy or Checkout, ask every time, even at Full autonomy, and the card hides what's being typed into a password field. The stop hotkey closes the browser.
 
+## Projects
+
+A project is a name, some instructions ("answer as if you're my renovation planner, budget is 15k") and files or folders you pin, set up on the dashboard's Projects page. Pick it from the menu in the bar and every question in that chat uses it. Orbit indexes the pinned files once (and again when they change), so each message only carries the few passages that match what you asked rather than whole files. Memories saved while a project is active stay with that project, and History shows which project a chat belonged to.
+
 ## Skills
 
 Skills are reusable instructions in the same `SKILL.md` format Claude uses: a folder with a name, a one-line description and the steps, plus any files they need. Drop one into Orbit's skills folder (the Skills page has a button that opens it) and Orbit uses it whenever a task fits. Your Claude skills in `~\.claude\skills` show up there too, read in place rather than copied. They start off, since most are written for Claude Code's own tools; switch on the ones that make sense.

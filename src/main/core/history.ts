@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import { getDb, now } from './db'
 
-export type ConversationRow = { id: string; title: string; model: string; created_at: string; updated_at: string }
+export type ConversationRow = { id: string; title: string; model: string; created_at: string; updated_at: string; project_id?: string | null }
 export type MessageRow = { id: number; role: 'user' | 'assistant'; text: string; created_at: string }
 
-export function createConversation(firstMessage: string, model: string): string {
+export function createConversation(firstMessage: string, model: string, projectId?: string): string {
   const id = randomUUID()
   const title = firstMessage.replace(/\s+/g, ' ').trim().slice(0, 80) || 'Untitled'
   const t = now()
-  getDb().prepare('INSERT INTO conversations (id, title, model, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').run(id, title, model, t, t)
+  getDb().prepare('INSERT INTO conversations (id, title, model, created_at, updated_at, project_id) VALUES (?, ?, ?, ?, ?, ?)').run(id, title, model, t, t, projectId ?? null)
   return id
 }
 

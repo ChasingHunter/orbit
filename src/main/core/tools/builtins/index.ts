@@ -16,5 +16,6 @@ import { copyFile, createFile, deleteFiles, editFile, moveFiles } from './writeF
 import { runCommand, runPythonTool } from './code'
 import { browserAct, browserLook } from './browser'
 import { useSkill } from './skills'
+import { searchProjectTool } from './project'
 
-export const builtinTools = [webSearch, webFetch, notify, getContext, remember, recall, forget, listIntegrations, startBackgroundTask, spawnAgents, setReminder, listReminders, cancelReminder, workflowGuide, createWorkflow, listWorkflows, runWorkflow, deleteWorkflow, readFeed, saveFile, readSavedFile, makeFile, listFolder, readFile, askUserTool, suggestMemory, listChanges, undoChangeTool, createFile, editFile, moveFiles, deleteFiles, copyFile, runPythonTool, runCommand, browserLook, browserAct, useSkill, deepResearch] as unknown as OrbitTool[]
+export const builtinTools = [webSearch, webFetch, notify, getContext, remember, recall, forget, listIntegrations, startBackgroundTask, spawnAgents, setReminder, listReminders, cancelReminder, workflowGuide, createWorkflow, listWorkflows, runWorkflow, deleteWorkflow, readFeed, saveFile, readSavedFile, makeFile, listFolder, readFile, askUserTool, suggestMemory, listChanges, undoChangeTool, createFile, editFile, moveFiles, deleteFiles, copyFile, runPythonTool, runCommand, browserLook, browserAct, useSkill, deepResearch, searchProjectTool] as unknown as OrbitTool[]

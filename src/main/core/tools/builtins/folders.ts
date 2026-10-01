@@ -7,6 +7,7 @@ import { defineTool } from '../types'
 import { extractText } from '../../extract'
 import { paths } from '../../../paths'
 import { skillDirs } from '../../skills'
+import { projectPaths } from '../../projects'
 
 // Read-only access to folders the user allowed in settings (Downloads and Desktop by default).
 
@@ -27,7 +28,7 @@ export function checked(path: string): string {
   const roots = allowedFolders()
   // Files attached in the bar are copied here, so they stay readable for follow-ups; Orbit's own
   // files folder is readable so what it made can be copied out.
-  const own = [paths.attachments, paths.files, ...skillDirs()]
+  const own = [paths.attachments, paths.files, ...skillDirs(), ...projectPaths()]
   const readable = [...roots, ...own]
   if (!roots.length && !own.some((o) => path.toLowerCase().startsWith(o.toLowerCase()))) throw new Error('No folders are allowed yet. Add one under Settings in the dashboard.')
   const guess = resolve(roots.find(() => !/^[a-z]:|^[\\/]/i.test(path)) ?? '', path)

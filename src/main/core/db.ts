@@ -63,10 +63,13 @@ export function getDb(): DatabaseSync {
     db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;')
     db.exec(SCHEMA)
     // Added in 0.9: what a running task is doing right now.
-    try {
-      db.exec('ALTER TABLE tasks ADD COLUMN progress TEXT')
-    } catch {
-      // already there
+    // And which project a memory or chat belongs to (none means everywhere).
+    for (const sql of ['ALTER TABLE tasks ADD COLUMN progress TEXT', 'ALTER TABLE memories ADD COLUMN project_id TEXT', 'ALTER TABLE conversations ADD COLUMN project_id TEXT']) {
+      try {
+        db.exec(sql)
+      } catch {
+        // already there
+      }
     }
   }
   return db

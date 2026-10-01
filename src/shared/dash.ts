@@ -24,7 +24,7 @@ export type PresetInfo = {
 export type MemoryKind = 'profile' | 'person' | 'preference' | 'project' | 'note'
 export type MemoryItem = { id: number; kind: MemoryKind; text: string; private: boolean; created_at: string; updated_at: string }
 
-export type ConversationItem = { id: string; title: string; model: string; created_at: string; updated_at: string }
+export type ConversationItem = { id: string; title: string; model: string; created_at: string; updated_at: string; project?: string }
 export type MessageItem = { id: number; role: 'user' | 'assistant'; text: string; created_at: string }
 
 export type TaskItem = {
@@ -110,6 +110,8 @@ export type TemplateInfo = { id: string; title: string; summary: string; install
 
 export type AuditItem = { at: string; tool: string; decision: 'allowed' | 'approved' | 'denied' | 'blocked'; ok?: boolean; input: unknown; output?: string }
 
+export type ProjectInfo = { id: string; name: string; instructions: string; paths: string[]; files: number; chunks: number }
+
 export type SkillInfo = { key: string; name: string; description: string; source: 'orbit' | 'claude'; enabled: boolean }
 
 export type StorageInfo = {
@@ -153,10 +155,10 @@ export type PermissionsInfo = {
   }[]
 }
 
-export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'history' | 'usage' | 'logs' | 'permissions' | 'skills' | 'setup' | 'settings'
+export type DashPage = 'tasks' | 'workflows' | 'integrations' | 'memory' | 'projects' | 'history' | 'usage' | 'logs' | 'permissions' | 'skills' | 'setup' | 'settings'
 
 export interface DashApi {
-  onChanged(cb: (what: 'integrations' | 'tasks' | 'memory' | 'history' | 'settings' | 'workflows' | 'logs') => void): () => void
+  onChanged(cb: (what: 'integrations' | 'tasks' | 'memory' | 'history' | 'settings' | 'workflows' | 'logs' | 'projects') => void): () => void
   onNavigate(cb: (page: DashPage) => void): () => void
   integrations(): Promise<{ states: IntegrationState[]; presets: PresetInfo[] }>
   connect(presetId: string, secrets: Record<string, string>): Promise<void>
@@ -194,6 +196,12 @@ export interface DashApi {
   usage(): Promise<UsageInfo>
   storage(): Promise<StorageInfo>
   skills(): Promise<{ skills: SkillInfo[]; orbitDir: string; claudeDir: string }>
+  projects(): Promise<ProjectInfo[]>
+  saveProject(p: { id?: string; name: string; instructions: string }): Promise<string>
+  deleteProject(id: string): Promise<void>
+  /** Opens a picker and pins what's chosen (a folder, or files). */
+  addProjectPaths(id: string, kind: 'folder' | 'files'): Promise<void>
+  removeProjectPath(id: string, path: string): Promise<void>
   setSkillEnabled(key: string, on: boolean): Promise<void>
   openSkillsFolder(which: 'orbit' | 'claude'): Promise<void>
   cleanup(): Promise<StorageInfo>

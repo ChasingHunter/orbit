@@ -38,6 +38,8 @@ import { runCleanup, startHousekeeping, storageReport } from './core/housekeepin
 import * as made from './core/madeFiles'
 import { registerPythonScheme } from './python/sandbox'
 import { browserOpen, closeBrowser } from './browser/session'
+import { activeProject, listProjects, setActiveProject } from './core/projects'
+import * as projectsModule from './core/projects'
 import { modelChoices } from './runners/choices'
 import { claudeStatus, runChecks } from './system/health'
 import { openDashboard } from './windows/dashboard'
@@ -227,6 +229,12 @@ function registerIpc(): void {
   ipcMain.handle('bar:rewind', (_e, text: string, context: ContextItem[]) => ({ turnId: conversation.rewind(text, context) }))
   ipcMain.handle('bar:models', () => modelChoices(conversation.currentModel))
   ipcMain.on('bar:set-model', (_e, ref: string) => conversation.setChatModel(ref || undefined))
+  ipcMain.handle('bar:projects', () => ({ current: activeProject() ?? '', options: listProjects().map((p) => ({ id: p.id, name: p.name })) }))
+  ipcMain.on('bar:set-project', (_e, id: string) => {
+    clearChatAllows()
+    conversation.reset()
+    setActiveProject(id || undefined)
+  })
   ipcMain.on('bar:new', () => {
     clearChatAllows()
     conversation.reset()
@@ -381,7 +389,7 @@ app.whenReady().then(() => {
     // Test hook for scripts/e2e.ts; never set in normal runs.
     Object.assign(globalThis, { __orbit: { onBarHotkey, onScreenshot, sendToBar, settings, voice, integrations, tasks, openDashboard, scheduler, workflows, triggers, conversation, runChecks, speaker, recentChanges, undoChange, runCleanup, storageReport,
       measureTools: () => runnableTools(() => []).map((t) => ({ name: t.name, chars: t.description.length + JSON.stringify(z.toJSONSchema(z.object(t.input))).length })),
-      made, snapshotClipboard, onPanic, browserOpen,
+      made, snapshotClipboard, onPanic, browserOpen, projects: projectsModule,
       callTool: (name: string, input: unknown, source?: 'chat' | 'workflow') => callTool(name, input, { signal: AbortSignal.timeout(60_000), context: [], source }) } })
     return
   }

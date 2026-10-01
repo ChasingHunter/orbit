@@ -1,4 +1,5 @@
 import { ftsQuery, getDb, now } from './db'
+import { activeProject } from './projects'
 
 export const MEMORY_KINDS = ['profile', 'person', 'preference', 'project', 'note'] as const
 export type MemoryKind = (typeof MEMORY_KINDS)[number]
@@ -34,8 +35,8 @@ export function addMemory(text: string, kind: MemoryKind = 'note', isPrivate = f
   if (reason) throw new Error(`Not saved: this looks like ${reason}. Orbit never stores secrets in memory.`)
   const t = now()
   const r = getDb()
-    .prepare('INSERT INTO memories (kind, text, private, created_at, updated_at) VALUES (?, ?, ?, ?, ?) RETURNING *')
-    .get(kind, text.trim(), isPrivate ? 1 : 0, t, t) as Row
+    .prepare('INSERT INTO memories (kind, text, private, created_at, updated_at, project_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING *')
+    .get(kind, text.trim(), isPrivate ? 1 : 0, t, t, activeProject() ?? null) as Row
   return toMemory(r)
 }
 
@@ -74,9 +75,10 @@ export function searchMemories(text: string, limit = 8, includePrivate = true): 
     .prepare(
       `SELECT m.* FROM memories_fts f JOIN memories m ON m.id = f.rowid
        WHERE memories_fts MATCH ? ${includePrivate ? '' : 'AND m.private = 0'}
+         AND (m.project_id IS NULL OR m.project_id = ?)
        ORDER BY bm25(memories_fts) LIMIT ?`
     )
-    .all(q, limit) as Row[]
+    .all(q, activeProject() ?? '', limit) as Row[]
   return rows.map(toMemory)
 }
 

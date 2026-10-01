@@ -64,6 +64,10 @@ export interface OrbitApi {
   models(): Promise<{ current: string; options: { ref: string; label: string }[] }>
   /** Model for this chat only ('' goes back to the default). */
   setModel(ref: string): void
+  /** Projects to pick from, and the active one ('' for none). */
+  projects(): Promise<{ current: string; options: { id: string; name: string }[] }>
+  /** Switches project ('' for none); starts a new chat. */
+  setProject(id: string): void
   newChat(): void
   approve(id: string, decision: 'once' | 'chat' | 'deny'): void
   answer(id: string, text: string): void

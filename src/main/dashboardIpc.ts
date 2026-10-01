@@ -1,4 +1,4 @@
-import { dialog, ipcMain, shell } from 'electron'
+import { dialog, ipcMain, shell, BrowserWindow } from 'electron'
 import { version } from '../../package.json'
 import { existsSync, readFileSync, mkdirSync } from 'node:fs'
 import type { DashSettings, MemoryKind } from '@shared/dash'
@@ -26,6 +26,7 @@ import type { PermissionsInfo, UsageInfo, WorkflowInfo } from '@shared/dash'
 import { snapshotBytes } from './core/userFiles'
 import { runCleanup, storageReport } from './core/housekeeping'
 import { claudeSkillsDir, listSkills, orbitSkillsDir } from './core/skills'
+import { addPath, deleteProject, listProjects, removePath, saveProject } from './core/projects'
 import { bundledClaudeVersion, findInstalledClaude, installedClaudeVersion, openUrl, runChecks, signInToClaude } from './system/health'
 import { levelDefault, policyOf } from './core/permissions'
 import { backgroundTokensToday, usageSummary } from './core/usage'
@@ -105,7 +106,10 @@ export function registerDashboardIpc(): void {
     notifyDashboard('memory')
   })
 
-  ipcMain.handle('dash:conversations', () => listConversations())
+  ipcMain.handle('dash:conversations', () => {
+    const names = new Map(listProjects().map((p) => [p.id, p.name]))
+    return listConversations().map((c) => ({ ...c, project: c.project_id ? names.get(c.project_id) : undefined }))
+  })
   ipcMain.handle('dash:messages', (_e, id: string) => getMessages(id))
   ipcMain.handle('dash:conversation-delete', (_e, id: string) => {
     deleteConversation(id)
@@ -246,6 +250,28 @@ export function registerDashboardIpc(): void {
     const dir = which === 'orbit' ? orbitSkillsDir() : claudeSkillsDir()
     mkdirSync(dir, { recursive: true })
     void shell.openPath(dir)
+  })
+  ipcMain.handle('dash:projects', () => listProjects())
+  ipcMain.handle('dash:project-save', (_e, p: { id?: string; name: string; instructions: string }) => {
+    const id = saveProject(p)
+    notifyDashboard('projects')
+    return id
+  })
+  ipcMain.handle('dash:project-delete', (_e, id: string) => {
+    deleteProject(id)
+    notifyDashboard('projects')
+  })
+  ipcMain.handle('dash:project-add', async (e, id: string, kind: 'folder' | 'files') => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const r = await (win
+      ? dialog.showOpenDialog(win, { properties: kind === 'folder' ? ['openDirectory'] : ['openFile', 'multiSelections'] })
+      : dialog.showOpenDialog({ properties: kind === 'folder' ? ['openDirectory'] : ['openFile', 'multiSelections'] }))
+    for (const p of r.filePaths) await addPath(id, p)
+    notifyDashboard('projects')
+  })
+  ipcMain.handle('dash:project-remove', async (_e, id: string, path: string) => {
+    await removePath(id, path)
+    notifyDashboard('projects')
   })
   ipcMain.handle('dash:storage', () => storageReport())
   ipcMain.handle('dash:cleanup', async () => {

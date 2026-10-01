@@ -30,7 +30,7 @@ export function HistoryPage(): React.JSX.Element {
               <button className="min-w-0 flex-1 text-left" onClick={() => setOpen(c)}>
                 <div className="truncate text-sm text-zinc-100">{c.title}</div>
                 <div className="text-xs text-zinc-500">
-                  {timeAgo(c.updated_at)} · {c.model}
+                  {timeAgo(c.updated_at)} · {c.model}{c.project ? ` · ${c.project}` : ''}
                 </div>
               </button>
               <span className="opacity-0 transition-opacity group-hover:opacity-100">

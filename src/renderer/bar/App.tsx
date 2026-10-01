@@ -80,6 +80,8 @@ export function App(): React.JSX.Element {
   const [editing, setEditing] = useState(false)
   const [models, setModels] = useState<{ current: string; options: { ref: string; label: string }[] }>({ current: '', options: [] })
   const loadModels = (): void => void api.models().then(setModels)
+  const [projects, setProjects] = useState<{ current: string; options: { id: string; name: string }[] }>({ current: '', options: [] })
+  const loadProjects = (): void => void api.projects().then(setProjects)
   useEffect(() => {
     // The picker's Cancel button fires a native "cancel" event that React doesn't expose.
     const el = fileRef.current
@@ -156,6 +158,7 @@ export function App(): React.JSX.Element {
           setContext(ev.context)
           setQuickActions(ev.quickActions ?? [])
           loadModels()
+          loadProjects()
           autoSubmitMs.current = ev.autoSubmitMs
           setTimeout(() => inputRef.current?.focus(), 0)
           break
@@ -534,6 +537,33 @@ export function App(): React.JSX.Element {
               style={{ fieldSizing: 'content' } as React.CSSProperties}
             />
             {speaking && <IconButton icon={VolumeX} label="Stop speaking" onClick={() => api.stopSpeaking()} />}
+            {projects.options.length > 0 && (
+              <select
+                value={projects.current}
+                disabled={busy}
+                onChange={(e) => {
+                  api.setProject(e.target.value)
+                  setProjects((p) => ({ ...p, current: e.target.value }))
+                  // A different project is a different conversation.
+                  setEntries([])
+                  setApprovals([])
+                  setTimeout(loadModels, 0)
+                  inputRef.current?.focus()
+                }}
+                title="Project"
+                aria-label="Project"
+                className="max-w-[130px] shrink-0 cursor-pointer truncate rounded-lg bg-transparent px-1.5 py-1 text-xs text-zinc-400 outline-none hover:bg-white/10 hover:text-zinc-100 disabled:opacity-50"
+              >
+                <option value="" className="bg-zinc-900 text-zinc-200">
+                  No project
+                </option>
+                {projects.options.map((o) => (
+                  <option key={o.id} value={o.id} className="bg-zinc-900 text-zinc-200">
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            )}
             {models.options.length > 1 && (
               <select
                 value={models.current}
