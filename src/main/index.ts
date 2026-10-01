@@ -48,7 +48,7 @@ import { claudeStatus, runChecks } from './system/health'
 import { openDashboard } from './windows/dashboard'
 import { pasteInto, snapshotClipboard } from './os/writeback'
 import { acceleratorKey, foregroundWindow, isKeyDown, waitForModifiersReleased, windowInfo, type Hwnd } from './os/win32'
-import { applyStartWithWindows, startAutoUpdates } from './os/system'
+import { applyStartWithWindows, handOffToInstalled, repairShortcut, startAutoUpdates } from './os/system'
 
 ensureDataDirs()
 installLogging((message) => sendToBar({ type: 'notice', level: 'error', text: `Internal error: ${message}` }))
@@ -57,7 +57,7 @@ protocol.registerSchemesAsPrivileged([pythonScheme, pageScheme])
 
 // Keep Chromium caches out of the user-facing data folder.
 app.setPath('userData', join(dataDir, 'chromium'))
-if (!app.requestSingleInstanceLock()) app.quit()
+if (!handOffToInstalled() && !app.requestSingleInstanceLock()) app.quit()
 
 let prevWindow: Hwnd // window the user was in before Orbit took focus (for Replace)
 let prevApp = ''
@@ -408,6 +408,7 @@ app.whenReady().then(() => {
   startBrowserUrlHelper()
   rebindHotkeys()
   applyStartWithWindows()
+  repairShortcut()
   startAutoUpdates()
   // First run on a new PC: walk through sign-in before anything else.
   void claudeStatus().then((s) => {

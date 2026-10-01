@@ -1,4 +1,5 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
+import { homedir } from 'node:os'
 import { settings } from '../settingsStore'
 
 // Spoken replies. Pocket TTS (Kyutai, runs on the CPU) through its local server, or Windows'
@@ -30,7 +31,9 @@ function pocketServer(): Promise<string> {
     // One command string through the shell: uvx may be an .exe or a .cmd shim depending on how
     // uv was installed. The command comes from the user's own settings.
     const command = `${settings.current.speech.pocketCommand} serve --host 127.0.0.1 --port ${Number(settings.current.speech.port)}`
-    server = spawn(command, { windowsHide: true, stdio: 'ignore', shell: true })
+    // Started from the home folder: if Orbit is killed and this outlives it, it mustn't hold Orbit's
+    // own folder open (that blocks updates and uninstalling).
+    server = spawn(command, { windowsHide: true, stdio: 'ignore', shell: true, cwd: homedir() })
     server.on('exit', () => {
       server = undefined
       serverReady = undefined

@@ -14,6 +14,12 @@ After that Orbit starts with Windows and keeps itself up to date (both can be sw
 
 The first time it starts, the dashboard opens on the Setup page and asks you to sign in to Claude. That's the only step you need.
 
+### Uninstalling
+
+Remove Orbit from Windows Settings, Apps. Besides the program, the uninstaller removes its start-with-Windows entry and downloaded updates, and asks whether to delete everything Orbit saved too: chats, memories, settings and keys, files it made that you kept, backups, its browser profile and downloaded models. Say No if you might reinstall. (For a scripted uninstall, `"Uninstall Orbit.exe" /S --delete-app-data` removes it all without asking.)
+
+A few things aren't Orbit's to delete, because other apps use them or they live elsewhere: your Claude sign-in (shared with Claude Code), uv and Pocket TTS, Ollama and its models, the services you connected (revoke Orbit's access in their settings if you like), and your Telegram bot.
+
 ### What it needs
 
 It runs on any Windows 10 or 11 PC (64-bit). The installer carries everything the core needs: its own copy of Claude Code, the speech-to-text engine, the sandbox workflow code runs in, and the rest. You don't need Node, Python or anything else to get going.
