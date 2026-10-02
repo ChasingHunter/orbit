@@ -189,6 +189,9 @@ export function App(): React.JSX.Element {
         case 'question':
           setQuestions((q) => [...q, ev.question])
           break
+        case 'question-closed':
+          setQuestions((q) => q.filter((x) => x.id !== ev.id))
+          break
         case 'audio':
           player.push(ev.pcm, ev.rate)
           setSpeaking(true)

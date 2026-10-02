@@ -58,6 +58,7 @@ export type BarEvent =
   | { type: 'audio'; pcm: Uint8Array; rate: number }
   | { type: 'audio-stop' }
   | { type: 'question'; question: { id: string; question: string; options: string[]; from: string } }
+  | { type: 'question-closed'; id: string }
   /** Shows an earlier conversation so the user can carry on with it. */
   | { type: 'restore'; title: string; messages: { role: 'user' | 'assistant'; text: string }[] }
   | { type: 'reset' }

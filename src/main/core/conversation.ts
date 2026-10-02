@@ -213,7 +213,8 @@ export class Conversation {
 
   /** Runnable tools that also report their calls/results to the bar. */
   private tools(): RunnableTool[] {
-    return runnableTools(() => this.context).map((t) => ({
+    // ask_user is for background work; in a chat the model just asks in its reply.
+    return runnableTools(() => this.context, ['ask_user']).map((t) => ({
       ...t,
       call: async (input, signal) => {
         const id = randomUUID()

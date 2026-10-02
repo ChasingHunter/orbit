@@ -6,9 +6,11 @@ export type Question = { id: string; question: string; options: string[]; from: 
 
 const pending = new Map<string, (answer: string | null) => void>()
 let presenter: ((q: Question) => void) | undefined
+let closer: ((id: string) => void) | undefined
 
-export function setQuestionPresenter(fn: (q: Question) => void): void {
+export function setQuestionPresenter(fn: (q: Question) => void, close?: (id: string) => void): void {
   presenter = fn
+  closer = close
 }
 
 /** Resolves with the answer, or null if nobody answered in time or the job was stopped. */
@@ -22,6 +24,8 @@ export function askUser(q: Omit<Question, 'id'>, signal: AbortSignal, timeoutMs 
       clearTimeout(timer)
       signal.removeEventListener('abort', onAbort)
       pending.delete(id)
+      // Answered, timed out or the job stopped: the card shouldn't linger in the bar.
+      closer?.(id)
       resolve(answer)
     }
     signal.addEventListener('abort', onAbort)

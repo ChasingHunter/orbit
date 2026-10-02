@@ -368,7 +368,7 @@ app.whenReady().then(() => {
     sendToBar({ type: 'question', question })
     if (!bar().isVisible()) showBar()
     notify('Orbit has a question', question.question, 'bar')
-  })
+  }, (id) => sendToBar({ type: 'question-closed', id }))
   setApprovalPresenter((request) => {
     sendToBar({ type: 'approval', request })
     if (!bar().isVisible()) showBar()

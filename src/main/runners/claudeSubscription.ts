@@ -37,6 +37,8 @@ class ClaudeSession implements RunnerSession {
   private input = new AsyncQueue<SDKUserMessage>()
   private q: Query | undefined
   private turn: AsyncQueue<AgentEvent> | undefined
+  /** Set when the user stops the current turn. */
+  private stopped = false
   /** modelUsage in results is a running total for the session; this is the last one seen. */
   private totals: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {}
 
@@ -190,7 +192,11 @@ class ClaudeSession implements RunnerSession {
           }
           if (delta.input + delta.output + delta.cacheRead + delta.cacheWrite > 0) turn.push({ type: 'usage', model, ...delta })
         }
-        if (msg.subtype !== 'success') turn.push({ type: 'error', message: msg.errors.join('\n') || msg.subtype })
+        if (msg.subtype !== 'success' && !this.stopped) {
+          // The SDK adds internal "[sdk_diagnostic] ..." lines; they mean nothing to the user.
+          const errors = msg.errors.filter((e) => !e.startsWith('[sdk_diagnostic]'))
+          turn.push({ type: 'error', message: errors.join('\n') || msg.subtype })
+        }
         this.endTurn()
         return
     }
@@ -208,7 +214,10 @@ class ClaudeSession implements RunnerSession {
     this.turn = events
     this.q ??= this.start()
 
+    this.stopped = false
     const onAbort = (): void => {
+      // Stopped by the user (Stop button or hotkey): the turn ending early isn't an error.
+      this.stopped = true
       void this.q?.interrupt().catch(() => {})
     }
     signal.addEventListener('abort', onAbort)
